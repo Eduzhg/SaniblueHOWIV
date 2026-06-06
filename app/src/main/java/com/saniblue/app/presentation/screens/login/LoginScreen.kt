@@ -55,6 +55,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.saniblue.app.BuildConfig
 import com.saniblue.app.presentation.theme.SaniblueBlue
 import com.saniblue.app.presentation.theme.SaniblueBlueDark
 
@@ -223,6 +224,16 @@ fun LoginScreen(
 
                 }
             }
+
+            Spacer(Modifier.height(16.dp))
+
+            // Versão do app (lida do build — reflete exatamente o que está rodando)
+            Text(
+                text = "Versão ${BuildConfig.VERSION_NAME}",
+                fontSize = 12.sp,
+                color = Color.White.copy(alpha = 0.7f),
+                letterSpacing = 0.5.sp
+            )
         }
     }
 }

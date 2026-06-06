@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.saniblue.app.BuildConfig
 import com.saniblue.app.presentation.theme.SaniblueBlue
 import kotlinx.coroutines.delay
 
@@ -96,6 +97,16 @@ fun SplashScreen(onNavigateToLogin: () -> Unit) {
                 color = Color.White.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center,
                 lineHeight = 18.sp
+            )
+
+            Spacer(Modifier.height(12.dp))
+
+            Text(
+                text = "Versão ${BuildConfig.VERSION_NAME}",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.White.copy(alpha = 0.85f),
+                letterSpacing = 0.5.sp
             )
         }
     }
