@@ -1,0 +1,4 @@
+-keep class com.saniblue.app.** { *; }
+-keep class androidx.room.** { *; }
+-dontwarn com.google.zxing.**
+-keep class com.google.zxing.** { *; }

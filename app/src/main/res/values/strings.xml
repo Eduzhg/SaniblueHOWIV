@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SANIBLUE Metrologia</string>
+    <string name="app_description">Sistema de Verificação Metrológica de Hidrômetros</string>
+
+    <!-- Login -->
+    <string name="login_title">Acesso ao Sistema</string>
+    <string name="login_subtitle">SANIBLUE Metrologia</string>
+    <string name="login_usuario">Usuário</string>
+    <string name="login_senha">Senha</string>
+    <string name="login_entrar">Entrar</string>
+    <string name="login_erro_credenciais">Usuário ou senha incorretos</string>
+
+    <!-- Dashboard -->
+    <string name="dashboard_titulo">Dashboard</string>
+    <string name="dashboard_total_ensaios">Total de Ensaios</string>
+    <string name="dashboard_aprovados">Aprovados</string>
+    <string name="dashboard_reprovados">Reprovados</string>
+    <string name="dashboard_pendentes">Pendentes</string>
+    <string name="dashboard_novo_ensaio">Novo Ensaio</string>
+    <string name="dashboard_ver_todos">Ver Todos</string>
+
+    <!-- Ensaios -->
+    <string name="ensaios_titulo">Lista de Ensaios</string>
+    <string name="ensaio_numero">Nº Hidrômetro</string>
+    <string name="ensaio_cliente">Cliente</string>
+    <string name="ensaio_data">Data do Ensaio</string>
+    <string name="ensaio_resultado">Resultado</string>
+    <string name="ensaio_aprovado">APROVADO</string>
+    <string name="ensaio_reprovado">REPROVADO</string>
+    <string name="ensaio_pendente">PENDENTE</string>
+
+    <!-- Novo Ensaio -->
+    <string name="novo_ensaio_titulo">Novo Ensaio</string>
+    <string name="dados_cadastrais">Dados Cadastrais</string>
+    <string name="dados_ensaio">Dados do Ensaio</string>
+    <string name="vazao_nominal">Vazão Nominal</string>
+    <string name="vazao_transicao">Vazão de Transição</string>
+    <string name="vazao_minima">Vazão Mínima</string>
+    <string name="medicao">Medição</string>
+    <string name="escoamento">Escoamento (L)</string>
+    <string name="leitura_inicial">Leitura Inicial</string>
+    <string name="leitura_final">Leitura Final</string>
+    <string name="valor_totalizado">Valor Totalizado</string>
+    <string name="erro_percentual">Erro (%)</string>
+    <string name="erro_medio">Erro Médio (%)</string>
+    <string name="resultado_final">Resultado Final</string>
+
+    <!-- PDF -->
+    <string name="gerar_pdf">Gerar Laudo PDF</string>
+    <string name="compartilhar_pdf">Compartilhar PDF</string>
+    <string name="laudo_metrológico">LAUDO METROLÓGICO</string>
+
+    <!-- Errors -->
+    <string name="erro_campo_obrigatorio">Campo obrigatório</string>
+    <string name="erro_valor_invalido">Valor inválido</string>
+    <string name="erro_salvar">Erro ao salvar ensaio</string>
+</resources>
