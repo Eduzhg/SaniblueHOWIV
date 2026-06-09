@@ -12,8 +12,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -31,11 +36,13 @@ fun MedicaoInputRow(
     padraoFinal: String,
     erro: Double?,
     aprovado: Boolean? = null,
+    erroPadrao: Double = 0.0,
     onEscoamentoChange: (String) -> Unit,
     onLeituraInicialChange: (String) -> Unit,
     onLeituraFinalChange: (String) -> Unit,
     onPadraoInicialChange: (String) -> Unit,
     onPadraoFinalChange: (String) -> Unit,
+    onLeituraFinalBlur: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val comparativo = metodo == MetodoEnsaio.COMPARATIVO_LEITURA
@@ -124,7 +131,7 @@ fun MedicaoInputRow(
                         label = { Text("Leit. Final", style = MaterialTheme.typography.labelSmall) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).aoSairDoCampo(onLeituraFinalBlur),
                         textStyle = MaterialTheme.typography.bodyMedium
                     )
                 }
@@ -158,10 +165,22 @@ fun MedicaoInputRow(
                         label = { Text("Leit. Final", style = MaterialTheme.typography.labelSmall) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).aoSairDoCampo(onLeituraFinalBlur),
                         textStyle = MaterialTheme.typography.bodyMedium
                     )
                 }
+            }
+
+            // Escoamento corrigido pelo erro padrão da maleta (volume de referência real)
+            val escBruto = escoamento.toDoubleLocale()
+            if (escBruto != null && escBruto > 0.0) {
+                val corrigido = escBruto * (100.0 - erroPadrao) / 100.0
+                Text(
+                    text = "Escoamento corrigido (−$erroPadrao%): ${"%.3f".format(corrigido)} L",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
 
             if (erro != null) {
@@ -185,13 +204,30 @@ fun MedicaoInputRow(
                         ErroChip(erro = erro, aprovado = aprovado)
                     } else {
                         Text(
-                            text = "%.2f%%".format(erro),
+                            text = "%.3f%%".format(erro),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Chama [onBlur] quando o campo PERDE o foco (depois de ter sido focado).
+ * Usado para só validar a leitura quando o técnico termina de digitar e sai do campo.
+ */
+@Composable
+private fun Modifier.aoSairDoCampo(onBlur: () -> Unit): Modifier {
+    var teveFoco by remember { mutableStateOf(false) }
+    return this.onFocusChanged { fs ->
+        if (fs.isFocused) {
+            teveFoco = true
+        } else if (teveFoco) {
+            teveFoco = false
+            onBlur()
         }
     }
 }

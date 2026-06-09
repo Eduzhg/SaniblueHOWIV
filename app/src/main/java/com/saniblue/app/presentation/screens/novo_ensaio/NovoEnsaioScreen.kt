@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.HourglassEmpty
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -28,12 +29,16 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -52,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.saniblue.app.domain.model.MetodoEnsaio
+import com.saniblue.app.domain.model.MotivosNaoRealizado
 import com.saniblue.app.domain.model.NormaEnsaio
 import com.saniblue.app.domain.model.ResultadoFinal
 import com.saniblue.app.domain.model.TipoVazao
@@ -79,8 +85,8 @@ fun NovoEnsaioScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    LaunchedEffect(ensaioId) {
-        if (ensaioId != 0L) viewModel.carregarEnsaio(ensaioId)
+    LaunchedEffect(Unit) {
+        viewModel.iniciar(ensaioId)
     }
 
     LaunchedEffect(uiState.isSaved) {
@@ -118,8 +124,35 @@ fun NovoEnsaioScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 16.dp)
         ) {
+            // === AVISO DE RASCUNHO RESTAURADO ===
+            if (uiState.rascunhoRestaurado) {
+                item {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = PendenteOrangeContainer),
+                        elevation = CardDefaults.cardElevation(0.dp)
+                    ) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "Rascunho recuperado da sessão anterior.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = PendenteOrange,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Row {
+                                TextButton(onClick = { viewModel.dispensarAvisoRascunho() }) { Text("OK") }
+                                TextButton(onClick = { viewModel.descartarRascunho() }) { Text("Descartar") }
+                            }
+                        }
+                    }
+                }
+            }
+
             // === NORMA E MÉTODO ===
-            item { SectionHeader(title = "Norma e Método do Ensaio") }
+            item { SectionHeader(title = "Norma do Ensaio") }
 
             item {
                 Text("Norma", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -144,27 +177,18 @@ fun NovoEnsaioScreen(
                 )
             }
 
+            // Método + maleta vêm do login (só leitura)
             item {
-                Text("Método de ensaio", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    MetodoEnsaio.entries.forEach { metodo ->
-                        FilterChip(
-                            selected = uiState.metodoEnsaio == metodo,
-                            onClick = { viewModel.selectMetodo(metodo) },
-                            label = { Text(metodo.label) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = SaniblueBlue,
-                                selectedLabelColor = Color.White
-                            )
-                        )
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = SaniblueBlue.copy(alpha = 0.08f)),
+                    elevation = CardDefaults.cardElevation(0.dp)
+                ) {
+                    Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text("Configuração do turno (definida no login)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Método: ${uiState.metodoEnsaio.label}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = SaniblueBlue)
+                        Text("Maleta: ${uiState.maletaNome}  •  Erro padrão: ${uiState.erroPadrao}%", style = MaterialTheme.typography.bodySmall, color = SaniblueBlue)
                     }
                 }
-                Text(
-                    text = uiState.metodoEnsaio.descricao,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 2.dp)
-                )
             }
 
             // === DADOS CADASTRAIS ===
@@ -220,7 +244,15 @@ fun NovoEnsaioScreen(
                         label = { Text("Nº Hidrômetro *") },
                         isError = uiState.validationErrors.containsKey("numeroHidrometro"),
                         modifier = Modifier.weight(1f),
-                        singleLine = true
+                        singleLine = true,
+                        placeholder = { Text("A99A999999") },
+                        supportingText = {
+                            Text(
+                                uiState.validationErrors["numeroHidrometro"] ?: "Letra, 2 nº, letra, 6 nº",
+                                color = if (uiState.validationErrors.containsKey("numeroHidrometro"))
+                                    MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     )
                     OutlinedTextField(
                         value = uiState.matricula,
@@ -313,14 +345,24 @@ fun NovoEnsaioScreen(
             }
 
             item {
-                OutlinedTextField(
-                    value = uiState.tecnicoResponsavel,
-                    onValueChange = viewModel::updateTecnico,
-                    label = { Text("Técnico Responsável *") },
-                    isError = uiState.validationErrors.containsKey("tecnicoResponsavel"),
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = uiState.tecnicoResponsavel,
+                        onValueChange = viewModel::updateTecnico,
+                        label = { Text("Técnico Responsável *") },
+                        isError = uiState.validationErrors.containsKey("tecnicoResponsavel"),
+                        modifier = Modifier.weight(2f),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = uiState.pressaoMedia,
+                        onValueChange = viewModel::updatePressaoMedia,
+                        label = { Text("Pressão Média (mca)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
+                }
             }
 
             item {
@@ -333,6 +375,62 @@ fun NovoEnsaioScreen(
                     maxLines = 4
                 )
             }
+
+            // === ENSAIO NÃO REALIZADO ===
+            item {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Ensaio não realizado", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                    Switch(
+                        checked = !uiState.realizado,
+                        onCheckedChange = { viewModel.setRealizado(!it) }
+                    )
+                }
+            }
+
+            if (!uiState.realizado) {
+                // Motivo (seleção única) — ensaio não realizado
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text("Motivo *", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        MotivosNaoRealizado.lista.forEach { motivo ->
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = uiState.motivoNaoRealizado == motivo ||
+                                        (motivo == MotivosNaoRealizado.OUTRO && uiState.motivoNaoRealizado.isNotBlank() && uiState.motivoNaoRealizado !in MotivosNaoRealizado.lista),
+                                    onClick = { viewModel.updateMotivoNaoRealizado(motivo) }
+                                )
+                                Text(motivo, style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                        // Campo livre quando "Outro" (ou motivo personalizado)
+                        val outroSelecionado = uiState.motivoNaoRealizado == MotivosNaoRealizado.OUTRO ||
+                            (uiState.motivoNaoRealizado.isNotBlank() && uiState.motivoNaoRealizado !in MotivosNaoRealizado.lista)
+                        if (outroSelecionado) {
+                            OutlinedTextField(
+                                value = if (uiState.motivoNaoRealizado == MotivosNaoRealizado.OUTRO) "" else uiState.motivoNaoRealizado,
+                                onValueChange = { viewModel.updateMotivoNaoRealizado(it) },
+                                label = { Text("Descreva o motivo") },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true
+                            )
+                        }
+                        if (uiState.validationErrors.containsKey("motivoNaoRealizado")) {
+                            Text(
+                                uiState.validationErrors["motivoNaoRealizado"]!!,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                }
+            } else {
 
             // === MODELO INFO ===
             uiState.modeloSelecionado?.let { modelo ->
@@ -369,6 +467,7 @@ fun NovoEnsaioScreen(
                 norma = uiState.norma,
                 metodo = uiState.metodoEnsaio,
                 vazaoRef = uiState.modeloSelecionado?.vazaoNominal?.toInt(),
+                erroPadrao = uiState.erroPadrao,
                 viewModel = viewModel
             )
             vazaoSection(
@@ -378,6 +477,7 @@ fun NovoEnsaioScreen(
                 norma = uiState.norma,
                 metodo = uiState.metodoEnsaio,
                 vazaoRef = uiState.modeloSelecionado?.vazaoTransicao?.toInt(),
+                erroPadrao = uiState.erroPadrao,
                 viewModel = viewModel
             )
             vazaoSection(
@@ -387,6 +487,7 @@ fun NovoEnsaioScreen(
                 norma = uiState.norma,
                 metodo = uiState.metodoEnsaio,
                 vazaoRef = uiState.modeloSelecionado?.vazaoMinima?.toInt(),
+                erroPadrao = uiState.erroPadrao,
                 viewModel = viewModel
             )
 
@@ -429,6 +530,8 @@ fun NovoEnsaioScreen(
                 }
             }
 
+            } // fim do if (uiState.realizado)
+
             // === BOTÃO SALVAR ===
             item {
                 Button(
@@ -460,6 +563,27 @@ fun NovoEnsaioScreen(
             item { Spacer(Modifier.height(24.dp)) }
         }
     }
+
+    // Diálogo de confirmação de leitura suspeita (provável erro de digitação)
+    uiState.alertaLeitura?.let { alerta ->
+        AlertDialog(
+            onDismissRequest = { viewModel.descartarAlerta() },
+            title = { Text("Confirmar leitura") },
+            text = {
+                Text(
+                    "A medição ${alerta.indice} resultou em um erro de " +
+                        "${"%.3f".format(alerta.erroPct)}%, fora do esperado. " +
+                        "Confira se os valores digitados estão corretos."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.confirmarAlerta() }) { Text("Está correto") }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.descartarAlerta() }) { Text("Revisar") }
+            }
+        )
+    }
 }
 
 /** Encurta um label "Vazão Nominal (QN)" → "QN" para o chip de referência. */
@@ -473,6 +597,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.vazaoSection(
     norma: NormaEnsaio,
     metodo: MetodoEnsaio,
     vazaoRef: Int?,
+    erroPadrao: Double,
     viewModel: NovoEnsaioViewModel
 ) {
     item { SectionHeader(title = titulo) }
@@ -499,11 +624,13 @@ private fun androidx.compose.foundation.lazy.LazyListScope.vazaoSection(
                     padraoFinal = m.padraoFinal,
                     erro = m.erro,
                     aprovado = m.aprovado,
+                    erroPadrao = erroPadrao,
                     onEscoamentoChange = { viewModel.updateMedicao(tipo, indice, escoamento = it) },
                     onLeituraInicialChange = { viewModel.updateMedicao(tipo, indice, inicial = it) },
                     onLeituraFinalChange = { viewModel.updateMedicao(tipo, indice, final = it) },
                     onPadraoInicialChange = { viewModel.updateMedicao(tipo, indice, padraoInicial = it) },
-                    onPadraoFinalChange = { viewModel.updateMedicao(tipo, indice, padraoFinal = it) }
+                    onPadraoFinalChange = { viewModel.updateMedicao(tipo, indice, padraoFinal = it) },
+                    onLeituraFinalBlur = { viewModel.verificarLeituraSuspeita(tipo, indice) }
                 )
             }
             vazaoState.erroMedio?.let { medio ->
@@ -546,7 +673,7 @@ private fun ResultadoVazaoCard(erroMedio: Double, aprovado: Boolean, label: Stri
             Column {
                 Text(text = label, style = MaterialTheme.typography.labelMedium, color = fg)
                 Text(
-                    text = "Erro médio: ${"%.2f".format(erroMedio)}%",
+                    text = "Erro médio: ${"%.3f".format(erroMedio)}%",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = fg
@@ -576,6 +703,9 @@ private fun ResultadoFinalCard(resultado: ResultadoFinal) {
         )
         ResultadoFinal.PENDENTE -> Quadruplet(
             PendenteOrangeContainer, PendenteOrange, Icons.Default.HourglassEmpty, "PENDENTE"
+        )
+        ResultadoFinal.NAO_REALIZADO -> Quadruplet(
+            PendenteOrangeContainer, PendenteOrange, Icons.Default.HourglassEmpty, "NÃO REALIZADO"
         )
     }
 

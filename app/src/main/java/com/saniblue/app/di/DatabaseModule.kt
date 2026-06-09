@@ -26,22 +26,25 @@ object DatabaseModule {
             SaniblueDatabase.DATABASE_NAME
         )
             .addCallback(object : RoomDatabase.Callback() {
-                // Popula de forma SÍNCRONA (SQL direto) — garante que os dados
-                // existam antes de qualquer consulta (ex.: primeira tentativa de login).
-                override fun onCreate(database: SupportSQLiteDatabase) {
-                    super.onCreate(database)
-                    prePopulate(database)
-                }
-
-                // fallbackToDestructiveMigration recria as tabelas sem chamar onCreate;
-                // por isso também populamos aqui ao subir a versão do banco.
-                override fun onDestructiveMigration(database: SupportSQLiteDatabase) {
-                    super.onDestructiveMigration(database)
-                    prePopulate(database)
+                // onOpen roda SEMPRE após as tabelas existirem (fresh install,
+                // migração destrutiva, etc.). Populamos aqui só quando está vazio.
+                // (Não dá para popular em onCreate/onDestructiveMigration: este último
+                //  é chamado durante o dropAllTables, antes de recriar as tabelas.)
+                override fun onOpen(database: SupportSQLiteDatabase) {
+                    super.onOpen(database)
+                    prePopulateSeVazio(database)
                 }
             })
             .fallbackToDestructiveMigration()
             .build()
+    }
+
+    /** Popula apenas se a tabela de usuários estiver vazia (idempotente). */
+    private fun prePopulateSeVazio(database: SupportSQLiteDatabase) {
+        val vazio = database.query("SELECT COUNT(*) FROM usuarios").use { cursor ->
+            cursor.moveToFirst() && cursor.getInt(0) == 0
+        }
+        if (vazio) prePopulate(database)
     }
 
     /** Insere modelos de hidrômetro e usuários padrão usando SQL direto (síncrono). */

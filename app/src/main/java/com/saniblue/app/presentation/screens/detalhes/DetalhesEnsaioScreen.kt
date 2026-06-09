@@ -163,17 +163,30 @@ fun DetalhesEnsaioScreen(
                             InfoRow("Data", ensaio.dataEnsaio)
                             InfoRow("Idade", ensaio.idadeHidrometro.ifBlank { "-" })
                             InfoRow("Temp. Água", "${ensaio.temperaturaAgua}°C".ifBlank { "-" })
+                            InfoRow("Pressão Média", ensaio.pressaoMedia.let { if (it.isBlank()) "-" else "$it mca" })
                             InfoRow("Norma", ensaio.norma.descricao)
                             InfoRow("Método", ensaio.metodoEnsaio.label)
+                            InfoRow("Maleta", ensaio.maletaNome.ifBlank { "-" })
+                            InfoRow("Erro Padrão", "${ensaio.erroPadrao}%")
                             if (ensaio.observacoes.isNotBlank()) {
                                 InfoRow("Observações", ensaio.observacoes)
                             }
                         }
                     }
 
-                    // Resultados por vazão
-                    ensaio.vazoes.forEach { vazao ->
-                        VazaoResultadoCard(vazao = vazao, norma = ensaio.norma)
+                    if (!ensaio.realizado) {
+                        // Ensaio não realizado
+                        SectionHeader("Ensaio Não Realizado")
+                        Card {
+                            Column(Modifier.padding(12.dp)) {
+                                InfoRow("Motivo", ensaio.motivoNaoRealizado.ifBlank { "-" })
+                            }
+                        }
+                    } else {
+                        // Resultados por vazão
+                        ensaio.vazoes.forEach { vazao ->
+                            VazaoResultadoCard(vazao = vazao, norma = ensaio.norma)
+                        }
                     }
 
                     // Dados de substituição (apenas reprovado)

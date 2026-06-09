@@ -51,6 +51,17 @@ data class EnsaioEntity(
     @ColumnInfo("norma") val norma: String = "PORTARIA_246",
     @ColumnInfo("metodo_ensaio") val metodoEnsaio: String = "ESCOAMENTO_DIRETO",
 
+    // Maleta usada e erro padrão aplicado
+    @ColumnInfo("maleta_nome") val maletaNome: String = "",
+    @ColumnInfo("erro_padrao") val erroPadrao: Double = 0.0,
+
+    // Pressão média (mca)
+    @ColumnInfo("pressao_media") val pressaoMedia: String = "",
+
+    // Ensaio não realizado + motivo
+    @ColumnInfo("realizado") val realizado: Boolean = true,
+    @ColumnInfo("motivo_nao_realizado") val motivoNaoRealizado: String = "",
+
     // Dados preenchidos apenas quando REPROVADO e substituído
     @ColumnInfo("leitura_final_reprovado") val leituraFinalReprovado: String = "",
     @ColumnInfo("numero_serie_novo") val numeroSerieNovo: String = "",

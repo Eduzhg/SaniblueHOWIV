@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -29,6 +30,9 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -56,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.saniblue.app.BuildConfig
+import com.saniblue.app.domain.model.MetodoEnsaio
 import com.saniblue.app.presentation.theme.SaniblueBlue
 import com.saniblue.app.presentation.theme.SaniblueBlueDark
 
@@ -186,6 +191,51 @@ fun LoginScreen(
                             }
                         ),
                         isError = uiState.error != null
+                    )
+
+                    HorizontalDivider()
+
+                    // === Configuração do turno: método + maleta ===
+                    Text(
+                        text = "Configuração da Maleta",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Text("Método de ensaio", style = MaterialTheme.typography.labelSmall)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        MetodoEnsaio.entries.forEach { metodo ->
+                            FilterChip(
+                                selected = uiState.metodoEnsaio == metodo,
+                                onClick = { viewModel.onMetodoChange(metodo) },
+                                label = { Text(metodo.label, style = MaterialTheme.typography.labelSmall) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = SaniblueBlue,
+                                    selectedLabelColor = Color.White
+                                )
+                            )
+                        }
+                    }
+
+                    Text("Maleta", style = MaterialTheme.typography.labelSmall)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        uiState.maletas.forEach { maleta ->
+                            FilterChip(
+                                selected = uiState.maletaSelecionada.id == maleta.id,
+                                onClick = { viewModel.onMaletaChange(maleta) },
+                                label = { Text(maleta.nome, style = MaterialTheme.typography.labelSmall) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = SaniblueBlue,
+                                    selectedLabelColor = Color.White
+                                )
+                            )
+                        }
+                    }
+                    Text(
+                        text = "Erro padrão: ${uiState.maletaSelecionada.erroPadrao}%",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
                     if (uiState.error != null) {

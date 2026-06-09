@@ -88,12 +88,19 @@ class CalcularErroUseCaseTest {
 
     // === Resultado final ===
 
+    // Vazão completa (com dados de escoamento nas 3 medições) e com o aprovado informado
+    private fun vazaoCompleta(tipo: TipoVazao, aprovado: Boolean) = VazaoEnsaio(
+        tipoVazao = tipo,
+        m1Escoamento = 10.0, m2Escoamento = 10.0, m3Escoamento = 10.0,
+        aprovado = aprovado
+    )
+
     @Test
     fun `resultado final aprovado quando todas as vazoes aprovadas`() {
         val vazoes = listOf(
-            VazaoEnsaio(tipoVazao = TipoVazao.NOMINAL, aprovado = true),
-            VazaoEnsaio(tipoVazao = TipoVazao.TRANSICAO, aprovado = true),
-            VazaoEnsaio(tipoVazao = TipoVazao.MINIMA, aprovado = true)
+            vazaoCompleta(TipoVazao.NOMINAL, true),
+            vazaoCompleta(TipoVazao.TRANSICAO, true),
+            vazaoCompleta(TipoVazao.MINIMA, true)
         )
         assertEquals(ResultadoFinal.APROVADO, useCase.calcularResultadoFinal(vazoes))
     }
@@ -101,9 +108,19 @@ class CalcularErroUseCaseTest {
     @Test
     fun `resultado final reprovado quando qualquer vazao reprovada`() {
         val vazoes = listOf(
-            VazaoEnsaio(tipoVazao = TipoVazao.NOMINAL, aprovado = true),
-            VazaoEnsaio(tipoVazao = TipoVazao.TRANSICAO, aprovado = false),
-            VazaoEnsaio(tipoVazao = TipoVazao.MINIMA, aprovado = true)
+            vazaoCompleta(TipoVazao.NOMINAL, true),
+            vazaoCompleta(TipoVazao.TRANSICAO, false),
+            vazaoCompleta(TipoVazao.MINIMA, true)
+        )
+        assertEquals(ResultadoFinal.REPROVADO, useCase.calcularResultadoFinal(vazoes))
+    }
+
+    @Test
+    fun `reprova mesmo sem a ultima vazao quando uma anterior falhou (short-circuit)`() {
+        // Nominal aprovada, Transição reprovada, Mínima ainda não feita → REPROVADO
+        val vazoes = listOf(
+            vazaoCompleta(TipoVazao.NOMINAL, true),
+            vazaoCompleta(TipoVazao.TRANSICAO, false)
         )
         assertEquals(ResultadoFinal.REPROVADO, useCase.calcularResultadoFinal(vazoes))
     }

@@ -53,10 +53,14 @@ class PdfGenerator @Inject constructor(private val context: Context) {
 
         drawCabecalho(ensaio)
         drawSecaoDadosCadastrais(ensaio, modelo)
-        drawSecaoResultados(ensaio, modelo)
-        drawResultadoFinal(ensaio.resultadoFinal)
-        if (ensaio.resultadoFinal == ResultadoFinal.REPROVADO) {
-            drawDadosSubstituicao(ensaio)
+        if (!ensaio.realizado) {
+            drawEnsaioNaoRealizado(ensaio)
+        } else {
+            drawSecaoResultados(ensaio, modelo)
+            drawResultadoFinal(ensaio.resultadoFinal)
+            if (ensaio.resultadoFinal == ResultadoFinal.REPROVADO) {
+                drawDadosSubstituicao(ensaio)
+            }
         }
         drawRodape(ensaio)
 
@@ -136,8 +140,11 @@ class PdfGenerator @Inject constructor(private val context: Context) {
             "Idade do Hidrômetro" to ensaio.idadeHidrometro.ifBlank { "-" },
             "Data do Ensaio" to ensaio.dataEnsaio,
             "Temperatura da Água" to ensaio.temperaturaAgua.let { if (it.isBlank()) "-" else "$it °C" },
+            "Pressão Média" to ensaio.pressaoMedia.let { if (it.isBlank()) "-" else "$it mca" },
             "Norma"         to ensaio.norma.descricao,
-            "Método de Ensaio" to ensaio.metodoEnsaio.label
+            "Método de Ensaio" to ensaio.metodoEnsaio.label,
+            "Maleta"        to ensaio.maletaNome.ifBlank { "-" },
+            "Erro Padrão"   to "${ensaio.erroPadrao}%"
         )
 
         pares.chunked(2).forEach { par ->
@@ -176,7 +183,7 @@ class PdfGenerator @Inject constructor(private val context: Context) {
 
         listOf(TipoVazao.NOMINAL, TipoVazao.TRANSICAO, TipoVazao.MINIMA).forEach { tipo ->
             val vazao = ensaio.vazoes.find { it.tipoVazao == tipo }
-            drawTabelaVazao(tipo, vazao, modelo, ensaio.norma)
+            drawTabelaVazao(tipo, vazao, modelo, ensaio.norma, ensaio.erroPadrao)
             y += 10f
         }
     }
@@ -185,7 +192,7 @@ class PdfGenerator @Inject constructor(private val context: Context) {
     // Tabela de uma Vazão (3 medições + linha de erro médio)
     // ─────────────────────────────────────────────────────────────────
 
-    private fun drawTabelaVazao(tipo: TipoVazao, vazao: VazaoEnsaio?, modelo: HidrometroModelo, norma: NormaEnsaio) {
+    private fun drawTabelaVazao(tipo: TipoVazao, vazao: VazaoEnsaio?, modelo: HidrometroModelo, norma: NormaEnsaio, erroPadrao: Double) {
         // Altura estimada: 18(hdr vazão)+22(hdr colunas)+3×16(linhas)+18(erro médio) = 106
         checkSpace(110f)
 
@@ -211,7 +218,7 @@ class PdfGenerator @Inject constructor(private val context: Context) {
         // ── Cabeçalho das colunas ─────────────────────────────
         // Larguras totais: 60+95+90+90+95+93 = 523 = CW  ✓ (sem coluna "Resultado")
         val CW_COLS = floatArrayOf(60f, 95f, 90f, 90f, 95f, 93f)
-        val HDRS    = arrayOf("Medição", "Escoamento (L)", "Leit. Inicial", "Leit. Final",
+        val HDRS    = arrayOf("Medição", "Escoam.corr.(L)", "Leit. Inicial", "Leit. Final",
                               "Totalizado (L)", "Erro (%)")
 
         canvas.drawRect(ML, y, PW - ML, y + 20f, fillPaint(Color.rgb(235, 235, 235)))
@@ -255,12 +262,15 @@ class PdfGenerator @Inject constructor(private val context: Context) {
                 val temDados  = esc > 0.0
                 val dentroLim = temDados && (erroPct in limMin..limMax)
 
+                // Escoamento corrigido pelo erro padrão da maleta (volume de referência)
+                val escCorrigido = esc * (100.0 - erroPadrao) / 100.0
+
                 // Formata os valores
-                val escStr  = if (temDados) "%.3f".format(esc)  else "—"
+                val escStr  = if (temDados) "%.3f".format(escCorrigido)  else "—"
                 val liStr   = if (temDados) "%.3f".format(li)   else "—"
                 val lfStr   = if (temDados) "%.3f".format(lf)   else "—"
                 val totStr  = if (temDados) "%.3f".format(totalizado) else "—"
-                val errStr  = if (temDados) "%.2f%%".format(erroPct)  else "—"
+                val errStr  = if (temDados) "%.3f%%".format(erroPct)  else "—"
 
                 // Cor do erro mantém referência visual (verde/vermelho), mas o veredito
                 // individual (APROVADO/REPROVADO) não é mais exibido — só o resultado final.
@@ -284,7 +294,7 @@ class PdfGenerator @Inject constructor(private val context: Context) {
         canvas.drawRect(ML, y, PW - ML, y + 18f, fillPaint(C_AZUL_CLR))
 
         val temDados   = vazao != null && vazao.m1Escoamento > 0 && vazao.m2Escoamento > 0 && vazao.m3Escoamento > 0
-        val erroMedStr = if (temDados) "%.2f%%".format(vazao!!.erroMedio) else "Dados incompletos"
+        val erroMedStr = if (temDados) "%.3f%%".format(vazao!!.erroMedio) else "Dados incompletos"
 
         canvas.drawText(
             "Erro Médio: $erroMedStr",
@@ -306,6 +316,7 @@ class PdfGenerator @Inject constructor(private val context: Context) {
             ResultadoFinal.APROVADO  -> Triple(C_VERDE_BG, C_VERDE, "✓   APROVADO")
             ResultadoFinal.REPROVADO -> Triple(C_VERM_BG,  C_VERM,  "✗   REPROVADO")
             ResultadoFinal.PENDENTE  -> Triple(Color.rgb(255, 224, 178), Color.rgb(200, 80, 0), "⚠   PENDENTE")
+            ResultadoFinal.NAO_REALIZADO -> Triple(Color.rgb(224, 224, 224), Color.rgb(90, 90, 90), "ENSAIO NÃO REALIZADO")
         }
 
         // Barra lateral colorida
@@ -318,6 +329,32 @@ class PdfGenerator @Inject constructor(private val context: Context) {
             ML + 12f, y + 40f, textPaint(fg, 18f, bold = true))
 
         y += 56f
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Ensaio não realizado
+    // ─────────────────────────────────────────────────────────────────
+
+    private fun drawEnsaioNaoRealizado(ensaio: Ensaio) {
+        y += 8f
+        checkSpace(60f)
+
+        val bg = Color.rgb(224, 224, 224)
+        val fg = Color.rgb(90, 90, 90)
+        canvas.drawRect(ML, y, ML + 5f, y + 50f, fillPaint(fg))
+        canvas.drawRect(ML + 5f, y, PW - ML, y + 50f, fillPaint(bg))
+        canvas.drawText("RESULTADO DO ENSAIO",
+            ML + 12f, y + 16f, textPaint(fg, 8.5f))
+        canvas.drawText("ENSAIO NÃO REALIZADO",
+            ML + 12f, y + 40f, textPaint(fg, 16f, bold = true))
+        y += 56f
+
+        drawTitulo("MOTIVO")
+        checkSpace(26f)
+        canvas.drawLine(ML, y, PW - ML, y, strokePaint(Color.LTGRAY, 0.4f))
+        canvas.drawText(trunc(ensaio.motivoNaoRealizado.ifBlank { "-" }, 80),
+            ML + 2f, y + 14f, textPaint(Color.BLACK, 9f, bold = true))
+        y += 24f
     }
 
     // ─────────────────────────────────────────────────────────────────

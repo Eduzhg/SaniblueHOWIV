@@ -19,6 +19,14 @@ data class Ensaio(
     // Norma e método usados no ensaio
     val norma: NormaEnsaio = NormaEnsaio.PORTARIA_246,
     val metodoEnsaio: MetodoEnsaio = MetodoEnsaio.ESCOAMENTO_DIRETO,
+    // Maleta usada e seu erro padrão (do certificado) aplicado no cálculo
+    val maletaNome: String = "",
+    val erroPadrao: Double = 0.0,
+    // Pressão média durante o ensaio (mca)
+    val pressaoMedia: String = "",
+    // Ensaio não realizado + motivo (morador ausente, sem acesso, etc.)
+    val realizado: Boolean = true,
+    val motivoNaoRealizado: String = "",
     val resultadoFinal: ResultadoFinal = ResultadoFinal.PENDENTE,
     // Dados preenchidos apenas quando o hidrômetro é REPROVADO e substituído
     val leituraFinalReprovado: String = "",
@@ -31,5 +39,17 @@ data class Ensaio(
 )
 
 enum class ResultadoFinal {
-    APROVADO, REPROVADO, PENDENTE
+    APROVADO, REPROVADO, PENDENTE, NAO_REALIZADO
+}
+
+/** Motivos pré-definidos para um ensaio não realizado. */
+object MotivosNaoRealizado {
+    const val OUTRO = "Outro"
+    val lista: List<String> = listOf(
+        "Morador ausente",
+        "Hidrômetro não localizado",
+        "Animal no local (cachorro)",
+        "Hidrômetro com impedimento de acesso",
+        OUTRO
+    )
 }

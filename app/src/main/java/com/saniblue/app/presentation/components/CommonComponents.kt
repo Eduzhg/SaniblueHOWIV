@@ -67,6 +67,10 @@ fun ResultadoBadge(
             PendenteOrangeContainer, PendenteOrange,
             Icons.Default.HourglassEmpty, "PENDENTE"
         )
+        ResultadoFinal.NAO_REALIZADO -> Quadruplet(
+            PendenteOrangeContainer, PendenteOrange,
+            Icons.Default.HourglassEmpty, "NÃO REALIZADO"
+        )
     }
 
     val padding = if (large) 12.dp else 6.dp
@@ -192,7 +196,7 @@ fun ErroChip(
         color = bg
     ) {
         Text(
-            text = "%.2f%%".format(erro),
+            text = "%.3f%%".format(erro),
             color = fg,
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
