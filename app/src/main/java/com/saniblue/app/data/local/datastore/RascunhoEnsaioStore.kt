@@ -22,12 +22,15 @@ class RascunhoEnsaioStore @Inject constructor(
 ) {
     private val chaveJson = stringPreferencesKey("json")
 
-    suspend fun salvar(json: String) {
+    suspend fun salvar(rascunho: RascunhoEnsaio) {
+        val json = RascunhoEnsaioSerializer.toJson(rascunho)
         context.rascunhoDataStore.edit { it[chaveJson] = json }
     }
 
-    suspend fun ler(): String? =
-        context.rascunhoDataStore.data.map { it[chaveJson] }.first()
+    suspend fun ler(): RascunhoEnsaio? {
+        val json = context.rascunhoDataStore.data.map { it[chaveJson] }.first() ?: return null
+        return runCatching { RascunhoEnsaioSerializer.fromJson(json) }.getOrNull()
+    }
 
     suspend fun limpar() {
         context.rascunhoDataStore.edit { it.remove(chaveJson) }

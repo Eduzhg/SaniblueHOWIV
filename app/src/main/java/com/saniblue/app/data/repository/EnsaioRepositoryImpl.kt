@@ -1,18 +1,14 @@
 package com.saniblue.app.data.repository
 
 import com.saniblue.app.data.local.dao.EnsaioDao
-import com.saniblue.app.data.local.dao.FotoEnsaioDao
 import com.saniblue.app.data.local.dao.VazaoEnsaioDao
 import com.saniblue.app.data.local.entity.EnsaioEntity
-import com.saniblue.app.data.local.entity.FotoEnsaioEntity
 import com.saniblue.app.data.local.entity.VazaoEnsaioEntity
 import com.saniblue.app.domain.model.DashboardStats
 import com.saniblue.app.domain.model.Ensaio
-import com.saniblue.app.domain.model.FotoEnsaio
 import com.saniblue.app.domain.model.MetodoEnsaio
 import com.saniblue.app.domain.model.NormaEnsaio
 import com.saniblue.app.domain.model.ResultadoFinal
-import com.saniblue.app.domain.model.TipoFoto
 import com.saniblue.app.domain.model.TipoVazao
 import com.saniblue.app.domain.model.VazaoEnsaio
 import com.saniblue.app.domain.repository.EnsaioRepository
@@ -23,36 +19,26 @@ import javax.inject.Inject
 
 class EnsaioRepositoryImpl @Inject constructor(
     private val ensaioDao: EnsaioDao,
-    private val vazaoEnsaioDao: VazaoEnsaioDao,
-    private val fotoEnsaioDao: FotoEnsaioDao
+    private val vazaoEnsaioDao: VazaoEnsaioDao
 ) : EnsaioRepository {
 
     override fun getAll(): Flow<List<Ensaio>> =
         ensaioDao.getAllComRelacoes().map { list ->
             list.map { relacao ->
-                relacao.ensaio.toDomain(
-                    vazoes = relacao.vazoes.map { it.toDomain() },
-                    fotos = relacao.fotos.map { it.toDomain() }
-                )
+                relacao.ensaio.toDomain(vazoes = relacao.vazoes.map { it.toDomain() })
             }
         }
 
     override fun search(query: String): Flow<List<Ensaio>> =
         ensaioDao.searchComRelacoes(query).map { list ->
             list.map { relacao ->
-                relacao.ensaio.toDomain(
-                    vazoes = relacao.vazoes.map { it.toDomain() },
-                    fotos = relacao.fotos.map { it.toDomain() }
-                )
+                relacao.ensaio.toDomain(vazoes = relacao.vazoes.map { it.toDomain() })
             }
         }
 
     override suspend fun getById(id: Long): Ensaio? {
         val relacao = ensaioDao.getComRelacoesByid(id) ?: return null
-        return relacao.ensaio.toDomain(
-            vazoes = relacao.vazoes.map { it.toDomain() },
-            fotos = relacao.fotos.map { it.toDomain() }
-        )
+        return relacao.ensaio.toDomain(vazoes = relacao.vazoes.map { it.toDomain() })
     }
 
     override suspend fun save(ensaio: Ensaio): Long {
@@ -68,11 +54,6 @@ class EnsaioRepositoryImpl @Inject constructor(
         vazaoEnsaioDao.deleteByEnsaioId(id)
         val vazaoEntities = ensaio.vazoes.map { it.toEntity(id) }
         vazaoEnsaioDao.insertAll(vazaoEntities)
-
-        // Replace all fotos
-        fotoEnsaioDao.deleteByEnsaioId(id)
-        val fotoEntities = ensaio.fotos.map { it.toEntity(id) }
-        fotoEnsaioDao.insertAll(fotoEntities)
 
         // Update resultado final
         ensaioDao.updateResultado(id, ensaio.resultadoFinal.name)
@@ -97,7 +78,7 @@ class EnsaioRepositoryImpl @Inject constructor(
 
     // --- Mappers ---
 
-    private fun EnsaioEntity.toDomain(vazoes: List<VazaoEnsaio>, fotos: List<FotoEnsaio>) = Ensaio(
+    private fun EnsaioEntity.toDomain(vazoes: List<VazaoEnsaio>) = Ensaio(
         id = id,
         hidrometroModeloId = hidrometroModeloId,
         numeroHidrometro = numeroHidrometro,
@@ -124,7 +105,6 @@ class EnsaioRepositoryImpl @Inject constructor(
         leituraInicialNovo = leituraInicialNovo,
         resultadoFinal = runCatching { ResultadoFinal.valueOf(resultadoFinal) }.getOrDefault(ResultadoFinal.PENDENTE),
         vazoes = vazoes,
-        fotos = fotos,
         createdAt = createdAt,
         updatedAt = updatedAt
     )
@@ -206,20 +186,5 @@ class EnsaioRepositoryImpl @Inject constructor(
         erro3 = erro3,
         erroMedio = erroMedio,
         aprovado = aprovado
-    )
-
-    private fun FotoEnsaioEntity.toDomain() = FotoEnsaio(
-        id = id,
-        tipoFoto = TipoFoto.valueOf(tipoFoto),
-        caminhoArquivo = caminhoArquivo,
-        dataCaptura = dataCaptura
-    )
-
-    private fun FotoEnsaio.toEntity(ensaioId: Long) = FotoEnsaioEntity(
-        id = id,
-        ensaioId = ensaioId,
-        tipoFoto = tipoFoto.name,
-        caminhoArquivo = caminhoArquivo,
-        dataCaptura = dataCaptura
     )
 }

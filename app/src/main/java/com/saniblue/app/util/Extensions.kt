@@ -4,22 +4,11 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-fun Long.toDataFormatada(): String {
-    val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("pt", "BR"))
-    return sdf.format(Date(this))
-}
-
-fun Double.formatarErro(): String = "%.3f%%".format(this)
-
-fun Double.formatarLitragem(): String = "%.3f L".format(this)
-
 /**
  * Aceita tanto ponto quanto vírgula como separador decimal (padrão BR).
  * Ex.: "50,372" e "50.372" ambos resultam em 50.372
  */
 fun String.toDoubleLocale(): Double? = trim().replace(",", ".").toDoubleOrNull()
-
-fun String.toDoubleOrZero(): Double = toDoubleLocale() ?: 0.0
 
 /**
  * Filtra a entrada para um número decimal com no máximo `maxDecimais` casas.

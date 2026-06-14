@@ -33,7 +33,6 @@ data class Ensaio(
     val numeroSerieNovo: String = "",
     val leituraInicialNovo: String = "",
     val vazoes: List<VazaoEnsaio> = emptyList(),
-    val fotos: List<FotoEnsaio> = emptyList(),
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 )

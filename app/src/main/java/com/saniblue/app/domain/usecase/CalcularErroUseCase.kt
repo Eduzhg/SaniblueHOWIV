@@ -59,7 +59,7 @@ class CalcularErroUseCase @Inject constructor() {
     }
 
     fun isVazaoAprovada(erroMedio: Double, tipoVazao: TipoVazao, norma: NormaEnsaio): Boolean =
-        erroMedio >= norma.limiteMin(tipoVazao) && erroMedio <= norma.limiteMax(tipoVazao)
+        erroMedio in norma.limiteMin(tipoVazao)..norma.limiteMax(tipoVazao)
 
     fun calcularResultadoFinal(vazoes: List<VazaoEnsaio>): ResultadoFinal {
         if (vazoes.isEmpty()) return ResultadoFinal.PENDENTE
@@ -78,9 +78,4 @@ class CalcularErroUseCase @Inject constructor() {
         }
         return ResultadoFinal.PENDENTE
     }
-
-    fun formatarErro(erro: Double): String = "%.3f%%".format(erro)
-
-    fun getLimitesLabel(tipoVazao: TipoVazao, norma: NormaEnsaio): String =
-        norma.limiteLabel(tipoVazao)
 }

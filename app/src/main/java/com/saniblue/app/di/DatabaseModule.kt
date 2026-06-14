@@ -90,7 +90,4 @@ object DatabaseModule {
 
     @Provides
     fun provideVazaoEnsaioDao(db: SaniblueDatabase) = db.vazaoEnsaioDao()
-
-    @Provides
-    fun provideFotoEnsaioDao(db: SaniblueDatabase) = db.fotoEnsaioDao()
 }

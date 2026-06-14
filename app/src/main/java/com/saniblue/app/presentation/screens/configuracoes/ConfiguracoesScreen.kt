@@ -11,7 +11,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.WaterDrop
@@ -33,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.saniblue.app.BuildConfig
 import com.saniblue.app.presentation.theme.SaniblueBlue
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -63,13 +63,13 @@ fun ConfiguracoesScreen(onNavigateBack: () -> Unit) {
                 ConfigItem(
                     icon = Icons.Default.WaterDrop,
                     titulo = "SANIBLUE Metrologia",
-                    subtitulo = "Versão 1.0.0 — Sistema de Verificação Metrológica de Hidrômetros"
+                    subtitulo = "Versão ${BuildConfig.VERSION_NAME} — Sistema de Verificação Metrológica de Hidrômetros"
                 )
                 HorizontalDivider()
                 ConfigItem(
                     icon = Icons.Default.Info,
                     titulo = "Desenvolvido para",
-                    subtitulo = "SANIBLUE — Saneamento e Abastecimento"
+                    subtitulo = "SANIBLUE — Engenharia em Hidrometria"
                 )
             }
 
@@ -87,20 +87,6 @@ fun ConfiguracoesScreen(onNavigateBack: () -> Unit) {
                 )
             }
 
-            ConfigSection(titulo = "Padrões de Acesso") {
-                ConfigItem(
-                    icon = Icons.Default.Person,
-                    titulo = "Usuário administrador",
-                    subtitulo = "Login: admin  •  Senha: admin123"
-                )
-                HorizontalDivider()
-                ConfigItem(
-                    icon = Icons.Default.Person,
-                    titulo = "Usuário técnico",
-                    subtitulo = "Login: tecnico  •  Senha: tecnico123"
-                )
-            }
-
             ConfigSection(titulo = "Normas de Referência") {
                 ConfigItem(
                     icon = Icons.Default.Info,
@@ -111,7 +97,13 @@ fun ConfiguracoesScreen(onNavigateBack: () -> Unit) {
                 ConfigItem(
                     icon = Icons.Default.Info,
                     titulo = "INMETRO / Portaria 246",
-                    subtitulo = "Aprovação de instrumentos de medição — hidrômetros"
+                    subtitulo = "Hidrômetros — QN (nominal) / QT (transição) / QM (mínima)"
+                )
+                HorizontalDivider()
+                ConfigItem(
+                    icon = Icons.Default.Info,
+                    titulo = "INMETRO / Portaria 155",
+                    subtitulo = "Hidrômetros — Q3 (permanente) / Q2 (transição) / Q1 (mínima)"
                 )
             }
         }

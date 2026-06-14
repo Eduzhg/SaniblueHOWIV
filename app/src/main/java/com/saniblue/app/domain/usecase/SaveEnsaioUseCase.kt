@@ -1,7 +1,6 @@
 package com.saniblue.app.domain.usecase
 
 import com.saniblue.app.domain.model.Ensaio
-import com.saniblue.app.domain.model.HidrometroModelo
 import com.saniblue.app.domain.model.ResultadoFinal
 import com.saniblue.app.domain.repository.EnsaioRepository
 import javax.inject.Inject
@@ -10,7 +9,7 @@ class SaveEnsaioUseCase @Inject constructor(
     private val repository: EnsaioRepository,
     private val calcularErro: CalcularErroUseCase
 ) {
-    suspend operator fun invoke(ensaio: Ensaio, modelo: HidrometroModelo): Result<Long> {
+    suspend operator fun invoke(ensaio: Ensaio): Result<Long> {
         return try {
             // Ensaio não realizado: não há medições a calcular
             if (!ensaio.realizado) {

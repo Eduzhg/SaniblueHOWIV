@@ -9,11 +9,15 @@ import com.saniblue.app.domain.model.NormaEnsaio
 import com.saniblue.app.domain.model.ResultadoFinal
 import com.saniblue.app.domain.model.TipoVazao
 import com.saniblue.app.domain.model.VazaoEnsaio
+import com.saniblue.app.data.local.datastore.RascunhoEnsaio
 import com.saniblue.app.data.local.datastore.RascunhoEnsaioStore
+import com.saniblue.app.data.local.datastore.RascunhoMedicao
+import com.saniblue.app.data.local.datastore.RascunhoVazao
 import com.saniblue.app.domain.repository.EnsaioRepository
 import com.saniblue.app.domain.repository.HidrometroRepository
 import com.saniblue.app.domain.session.SessaoTecnico
 import com.saniblue.app.domain.usecase.CalcularErroUseCase
+import com.saniblue.app.domain.usecase.CalcularIdadeHidrometroUseCase
 import com.saniblue.app.domain.usecase.SaveEnsaioUseCase
 import com.saniblue.app.util.filtrarDecimal
 import com.saniblue.app.util.filtrarSerialHidrometro
@@ -26,8 +30,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
-import org.json.JSONObject
-import java.util.Calendar
 import java.util.Locale
 import javax.inject.Inject
 
@@ -127,6 +129,7 @@ class NovoEnsaioViewModel @Inject constructor(
     private val ensaioRepository: EnsaioRepository,
     private val hidrometroRepository: HidrometroRepository,
     private val calcularErro: CalcularErroUseCase,
+    private val calcularIdade: CalcularIdadeHidrometroUseCase,
     private val sessao: SessaoTecnico,
     private val rascunhoStore: RascunhoEnsaioStore
 ) : ViewModel() {
@@ -155,7 +158,7 @@ class NovoEnsaioViewModel @Inject constructor(
         viewModelScope.launch {
             uiState.debounce(500).collect { s ->
                 if (ensaioIdAtual == 0L && !s.isSaved && temAlgumDado(s)) {
-                    runCatching { rascunhoStore.salvar(serializar(s)) }
+                    runCatching { rascunhoStore.salvar(paraRascunho(s)) }
                 }
             }
         }
@@ -185,8 +188,8 @@ class NovoEnsaioViewModel @Inject constructor(
 
     private fun restaurarRascunho() {
         viewModelScope.launch {
-            val json = runCatching { rascunhoStore.ler() }.getOrNull() ?: return@launch
-            runCatching { aplicarRascunho(json) }
+            val rascunho = runCatching { rascunhoStore.ler() }.getOrNull() ?: return@launch
+            aplicarRascunho(rascunho)
         }
     }
 
@@ -270,7 +273,7 @@ class NovoEnsaioViewModel @Inject constructor(
         // Máscara fixa Letra-NN-Letra-NNNNNN (10 caracteres)
         val serial = v.filtrarSerialHidrometro()
         // Idade preenchida automaticamente a partir do nº de série (ex.: Y20B → fab. 2020)
-        copy(numeroHidrometro = serial, idadeHidrometro = calcularIdadePeloSerial(serial) ?: idadeHidrometro)
+        copy(numeroHidrometro = serial, idadeHidrometro = calcularIdade(serial) ?: idadeHidrometro)
     }
     fun updateCliente(v: String) = update { copy(cliente = v) }
     fun updateNomeCompanhia(v: String) = update { copy(nomeCompanhia = v) }
@@ -447,7 +450,8 @@ class NovoEnsaioViewModel @Inject constructor(
             return
         }
 
-        val modelo = state.modeloSelecionado ?: return
+        // Exige um modelo selecionado (define o hidrometroModeloId)
+        if (state.modeloSelecionado == null) return
 
         viewModelScope.launch {
             update { copy(isLoading = true, error = null) }
@@ -478,11 +482,10 @@ class NovoEnsaioViewModel @Inject constructor(
                 numeroSerieNovo = state.numeroSerieNovo,
                 leituraInicialNovo = state.leituraInicialNovo,
                 vazoes = if (state.realizado) buildVazoes(state) else emptyList(),
-                fotos = emptyList(),
                 resultadoFinal = state.resultadoFinal
             )
 
-            saveEnsaio(ensaio, modelo).fold(
+            saveEnsaio(ensaio).fold(
                 onSuccess = { id ->
                     runCatching { rascunhoStore.limpar() }
                     update { copy(isLoading = false, isSaved = true, savedId = id) }
@@ -602,81 +605,77 @@ class NovoEnsaioViewModel @Inject constructor(
         }
     }
 
-    private fun serializar(s: NovoEnsaioUiState): String {
-        fun med(m: MedicaoState) = JSONObject().apply {
-            put("e", m.escoamento); put("li", m.leituraInicial); put("lf", m.leituraFinal)
-            put("pi", m.padraoInicial); put("pf", m.padraoFinal)
-        }
-        fun vaz(v: VazaoState) = JSONObject().apply {
-            put("m1", med(v.m1)); put("m2", med(v.m2)); put("m3", med(v.m3))
-        }
-        return JSONObject().apply {
-            put("numeroHidrometro", s.numeroHidrometro)
-            put("cliente", s.cliente)
-            put("nomeCompanhia", s.nomeCompanhia)
-            put("matricula", s.matricula)
-            put("endereco", s.endereco)
-            put("cidade", s.cidade)
-            put("bairro", s.bairro)
-            put("dataEnsaio", s.dataEnsaio)
-            put("tecnico", s.tecnicoResponsavel)
-            put("idade", s.idadeHidrometro)
-            put("temperatura", s.temperaturaAgua)
-            put("pressao", s.pressaoMedia)
-            put("observacoes", s.observacoes)
-            put("norma", s.norma.name)
-            put("modeloId", s.modeloSelecionadoId)
-            put("realizado", s.realizado)
-            put("motivo", s.motivoNaoRealizado)
-            put("lfReprovado", s.leituraFinalReprovado)
-            put("serieNovo", s.numeroSerieNovo)
-            put("liNovo", s.leituraInicialNovo)
-            put("nominal", vaz(s.nominal))
-            put("transicao", vaz(s.transicao))
-            put("minima", vaz(s.minima))
-        }.toString()
+    private fun paraRascunho(s: NovoEnsaioUiState): RascunhoEnsaio {
+        fun med(m: MedicaoState) = RascunhoMedicao(
+            escoamento = m.escoamento,
+            leituraInicial = m.leituraInicial,
+            leituraFinal = m.leituraFinal,
+            padraoInicial = m.padraoInicial,
+            padraoFinal = m.padraoFinal
+        )
+        fun vaz(v: VazaoState) = RascunhoVazao(med(v.m1), med(v.m2), med(v.m3))
+        return RascunhoEnsaio(
+            numeroHidrometro = s.numeroHidrometro,
+            cliente = s.cliente,
+            nomeCompanhia = s.nomeCompanhia,
+            matricula = s.matricula,
+            endereco = s.endereco,
+            cidade = s.cidade,
+            bairro = s.bairro,
+            dataEnsaio = s.dataEnsaio,
+            tecnicoResponsavel = s.tecnicoResponsavel,
+            idadeHidrometro = s.idadeHidrometro,
+            temperaturaAgua = s.temperaturaAgua,
+            pressaoMedia = s.pressaoMedia,
+            observacoes = s.observacoes,
+            norma = s.norma.name,
+            modeloSelecionadoId = s.modeloSelecionadoId,
+            realizado = s.realizado,
+            motivoNaoRealizado = s.motivoNaoRealizado,
+            leituraFinalReprovado = s.leituraFinalReprovado,
+            numeroSerieNovo = s.numeroSerieNovo,
+            leituraInicialNovo = s.leituraInicialNovo,
+            nominal = vaz(s.nominal),
+            transicao = vaz(s.transicao),
+            minima = vaz(s.minima)
+        )
     }
 
-    private fun aplicarRascunho(json: String) {
-        val o = JSONObject(json)
-        fun med(j: JSONObject?) = MedicaoState(
-            escoamento = j?.optString("e") ?: "",
-            leituraInicial = j?.optString("li") ?: "",
-            leituraFinal = j?.optString("lf") ?: "",
-            padraoInicial = j?.optString("pi") ?: "",
-            padraoFinal = j?.optString("pf") ?: ""
+    private fun aplicarRascunho(r: RascunhoEnsaio) {
+        fun med(m: RascunhoMedicao) = MedicaoState(
+            escoamento = m.escoamento,
+            leituraInicial = m.leituraInicial,
+            leituraFinal = m.leituraFinal,
+            padraoInicial = m.padraoInicial,
+            padraoFinal = m.padraoFinal
         )
-        fun vaz(j: JSONObject?) = VazaoState(
-            m1 = med(j?.optJSONObject("m1")),
-            m2 = med(j?.optJSONObject("m2")),
-            m3 = med(j?.optJSONObject("m3"))
-        )
-        val modeloId = o.optLong("modeloId", _uiState.value.modeloSelecionadoId)
+        fun vaz(v: RascunhoVazao) = VazaoState(med(v.m1), med(v.m2), med(v.m3))
+        val modeloId = r.modeloSelecionadoId.takeIf { it != 0L } ?: _uiState.value.modeloSelecionadoId
         update {
             copy(
-                numeroHidrometro = o.optString("numeroHidrometro"),
-                cliente = o.optString("cliente"),
-                nomeCompanhia = o.optString("nomeCompanhia"),
-                matricula = o.optString("matricula"),
-                endereco = o.optString("endereco"),
-                cidade = o.optString("cidade"),
-                bairro = o.optString("bairro"),
-                dataEnsaio = o.optString("dataEnsaio"),
-                tecnicoResponsavel = o.optString("tecnico"),
-                idadeHidrometro = o.optString("idade"),
-                temperaturaAgua = o.optString("temperatura"),
-                pressaoMedia = o.optString("pressao"),
-                observacoes = o.optString("observacoes"),
-                norma = runCatching { NormaEnsaio.valueOf(o.optString("norma")) }.getOrDefault(norma),
+                numeroHidrometro = r.numeroHidrometro,
+                cliente = r.cliente,
+                nomeCompanhia = r.nomeCompanhia,
+                matricula = r.matricula,
+                endereco = r.endereco,
+                cidade = r.cidade,
+                bairro = r.bairro,
+                dataEnsaio = r.dataEnsaio,
+                tecnicoResponsavel = r.tecnicoResponsavel,
+                idadeHidrometro = r.idadeHidrometro,
+                temperaturaAgua = r.temperaturaAgua,
+                pressaoMedia = r.pressaoMedia,
+                observacoes = r.observacoes,
+                norma = runCatching { NormaEnsaio.valueOf(r.norma) }.getOrDefault(norma),
                 modeloSelecionadoId = modeloId,
-                realizado = o.optBoolean("realizado", true),
-                motivoNaoRealizado = o.optString("motivo"),
-                leituraFinalReprovado = o.optString("lfReprovado"),
-                numeroSerieNovo = o.optString("serieNovo"),
-                leituraInicialNovo = o.optString("liNovo"),
-                nominal = vaz(o.optJSONObject("nominal")),
-                transicao = vaz(o.optJSONObject("transicao")),
-                minima = vaz(o.optJSONObject("minima")),
+                realizado = r.realizado,
+                motivoNaoRealizado = r.motivoNaoRealizado,
+                leituraFinalReprovado = r.leituraFinalReprovado,
+                numeroSerieNovo = r.numeroSerieNovo,
+                leituraInicialNovo = r.leituraInicialNovo,
+                nominal = vaz(r.nominal),
+                transicao = vaz(r.transicao),
+                minima = vaz(r.minima),
                 rascunhoRestaurado = true
             )
         }
@@ -686,21 +685,6 @@ class NovoEnsaioViewModel @Inject constructor(
             if (modelo != null) update { copy(modeloSelecionado = modelo) }
             recalcularTudo()
         }
-    }
-
-    /**
-     * Calcula a idade do hidrômetro a partir do nº de série.
-     * Os 2 primeiros dígitos representam o ano de fabricação (ex.: Y20B → 2020).
-     * Idade = ano atual − ano de fabricação.
-     */
-    private fun calcularIdadePeloSerial(serial: String): String? {
-        val yy = Regex("(\\d{2})").find(serial)?.groupValues?.get(1)?.toIntOrNull() ?: return null
-        val anoAtual = Calendar.getInstance().get(Calendar.YEAR)
-        var anoFab = 2000 + yy
-        if (anoFab > anoAtual) anoFab = 1900 + yy
-        val idade = anoAtual - anoFab
-        if (idade < 0) return null
-        return "$idade ano(s) — fab. $anoFab"
     }
 
     private fun formatNum(d: Double): String {
