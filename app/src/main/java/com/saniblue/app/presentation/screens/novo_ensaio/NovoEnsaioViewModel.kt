@@ -119,8 +119,16 @@ data class NovoEnsaioUiState(
     val isSaved: Boolean = false,
     val savedId: Long = 0L,
     val error: String? = null,
-    val validationErrors: Map<String, String> = emptyMap()
+    val validationErrors: Map<String, String> = emptyMap(),
+
+    // Wizard (fluxo em etapas): Cadastro, Nominal, Transição, Mínima, Resultado
+    val passoAtual: Int = 0,
+    // Aviso transitório mostrado em snackbar (não bloqueia a navegação)
+    val mensagemAviso: String? = null
 )
+
+// Total de etapas do wizard: Cadastro, Nominal, Transição, Mínima, Resultado
+const val TOTAL_PASSOS = 5
 
 @OptIn(FlowPreview::class)
 @HiltViewModel
@@ -380,11 +388,11 @@ class NovoEnsaioViewModel @Inject constructor(
         val medio = if (e1 != null && e2 != null && e3 != null) (e1 + e2 + e3) / 3.0 else null
         val aprovado = medio?.let { calcularErro.isVazaoAprovada(it, tipo, norma) }
 
+        // Vazão + resultado final em uma única emissão de estado (menos recomposições)
         update {
-            withVazao(tipo, vs.copy(m1 = m1, m2 = m2, m3 = m3, erroMedio = medio, aprovado = aprovado))
+            val novo = withVazao(tipo, vs.copy(m1 = m1, m2 = m2, m3 = m3, erroMedio = medio, aprovado = aprovado))
+            novo.copy(resultadoFinal = resultadoDe(novo))
         }
-
-        atualizarResultadoFinal()
     }
 
     /**
@@ -420,20 +428,18 @@ class NovoEnsaioViewModel @Inject constructor(
         return calcularErro.calcularErro(esc, ini, fin, _uiState.value.erroPadrao)
     }
 
-    private fun atualizarResultadoFinal() {
-        val s = _uiState.value
-        if (!s.realizado) {
-            update { copy(resultadoFinal = ResultadoFinal.NAO_REALIZADO) }
-            return
-        }
+    private fun atualizarResultadoFinal() = update { copy(resultadoFinal = resultadoDe(this)) }
+
+    /** Resultado final derivado do estado (função pura — sem emitir estado). */
+    private fun resultadoDe(s: NovoEnsaioUiState): ResultadoFinal {
+        if (!s.realizado) return ResultadoFinal.NAO_REALIZADO
         val aprovacoes = listOf(s.nominal.aprovado, s.transicao.aprovado, s.minima.aprovado)
-        val resultado = when {
+        return when {
             // Short-circuit: qualquer vazão completa e reprovada já reprova o ensaio
             aprovacoes.any { it == false } -> ResultadoFinal.REPROVADO
             aprovacoes.all { it == true } -> ResultadoFinal.APROVADO
             else -> ResultadoFinal.PENDENTE
         }
-        update { copy(resultadoFinal = resultado) }
     }
 
     private fun recalcularTudo() {
@@ -442,11 +448,75 @@ class NovoEnsaioViewModel @Inject constructor(
         }
     }
 
+    // --- Navegação do wizard ---
+    // O autosave do rascunho (DataStore, com debounce no init) persiste o progresso
+    // a cada mudança de estado — trocar de etapa já grava implicitamente.
+
+    /** Vai direto para uma etapa (indicador de passos clicável). */
+    fun irParaPasso(passo: Int) {
+        val alvo = passo.coerceIn(0, TOTAL_PASSOS - 1)
+        update { copy(passoAtual = alvo) }
+    }
+
+    /** Avança; avisa (sem bloquear) se a etapa atual tiver pendências. */
+    fun proximoPasso() {
+        val atual = _uiState.value.passoAtual
+        avisarPendencias(atual)
+        if (atual < TOTAL_PASSOS - 1) irParaPasso(atual + 1)
+    }
+
+    fun passoAnterior() {
+        val atual = _uiState.value.passoAtual
+        if (atual > 0) irParaPasso(atual - 1)
+    }
+
+    fun limparAviso() = update { copy(mensagemAviso = null) }
+
+    /** Pendências de uma etapa — apenas informativo, nunca impede avançar. */
+    private fun avisarPendencias(passo: Int) {
+        val s = _uiState.value
+        // Ensaio não realizado só exige cadastro/motivo — não há vazões a preencher
+        if (!s.realizado && passo in 1..3) return
+        val pend = when (passo) {
+            0 -> buildList {
+                if (s.numeroHidrometro.isBlank()) add("Nº Hidrômetro")
+                if (s.cliente.isBlank()) add("Cliente")
+                if (s.tecnicoResponsavel.isBlank()) add("Técnico")
+                if (validarData(s.dataEnsaio) != null) add("Data")
+                if (!s.realizado && s.motivoNaoRealizado.isBlank()) add("Motivo")
+            }
+            1 -> if (s.nominal.erroMedio == null) listOf("medições da ${s.norma.labelNominal}") else emptyList()
+            2 -> if (s.transicao.erroMedio == null) listOf("medições da ${s.norma.labelTransicao}") else emptyList()
+            3 -> if (s.minima.erroMedio == null) listOf("medições da ${s.norma.labelMinima}") else emptyList()
+            else -> emptyList()
+        }
+        if (pend.isNotEmpty()) {
+            update { copy(mensagemAviso = "Pendente: ${pend.joinToString(", ")}") }
+        }
+    }
+
+    private fun rotuloCampo(key: String) = when (key) {
+        "numeroHidrometro" -> "Nº Hidrômetro"
+        "cliente" -> "Cliente"
+        "tecnicoResponsavel" -> "Técnico"
+        "dataEnsaio" -> "Data"
+        "motivoNaoRealizado" -> "Motivo"
+        else -> key
+    }
+
     fun salvar(ensaioId: Long = 0L) {
         val state = _uiState.value
         val erros = validar(state)
         if (erros.isNotEmpty()) {
-            update { copy(validationErrors = erros) }
+            val faltantes = erros.keys.joinToString(", ") { rotuloCampo(it) }
+            // Volta para a etapa de cadastro (onde ficam os campos obrigatórios) e avisa
+            update {
+                copy(
+                    validationErrors = erros,
+                    passoAtual = 0,
+                    mensagemAviso = "Preencha os campos obrigatórios: $faltantes"
+                )
+            }
             return
         }
 

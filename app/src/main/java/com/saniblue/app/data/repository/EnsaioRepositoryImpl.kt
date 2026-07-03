@@ -66,6 +66,8 @@ class EnsaioRepositoryImpl @Inject constructor(
         ensaioDao.delete(entity)
     }
 
+    override suspend fun deleteAll() = ensaioDao.deleteAll()
+
     override fun getDashboardStats(): Flow<DashboardStats> =
         combine(
             ensaioDao.countTotal(),

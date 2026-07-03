@@ -6,14 +6,21 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.WaterDrop
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -22,22 +29,47 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.saniblue.app.BuildConfig
 import com.saniblue.app.presentation.theme.SaniblueBlue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ConfiguracoesScreen(onNavigateBack: () -> Unit) {
+fun ConfiguracoesScreen(
+    onNavigateBack: () -> Unit,
+    viewModel: ConfiguracoesViewModel = hiltViewModel()
+) {
+    val totalEnsaios by viewModel.totalEnsaios.collectAsStateWithLifecycle()
+    val mensagem by viewModel.mensagem.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    var confirmarLimpeza by remember { mutableStateOf(false) }
+
+    LaunchedEffect(mensagem) {
+        mensagem?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.limparMensagem()
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -49,7 +81,8 @@ fun ConfiguracoesScreen(onNavigateBack: () -> Unit) {
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = SaniblueBlue)
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(
             modifier = Modifier
@@ -106,7 +139,68 @@ fun ConfiguracoesScreen(onNavigateBack: () -> Unit) {
                     subtitulo = "Hidrômetros — Q3 (permanente) / Q2 (transição) / Q1 (mínima)"
                 )
             }
+
+            // === Manutenção — apenas em builds de teste (debug) ===
+            if (BuildConfig.DEBUG) {
+                ConfigSection(titulo = "Manutenção (Testes)") {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            text = "Apaga todos os ensaios do dispositivo. Disponível apenas em builds de teste.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Button(
+                            onClick = { confirmarLimpeza = true },
+                            enabled = totalEnsaios > 0,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            )
+                        ) {
+                            Icon(Icons.Default.DeleteForever, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = if (totalEnsaios > 0) "Limpar ensaios ($totalEnsaios)" else "Sem ensaios para limpar",
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
         }
+    }
+
+    // Confirmação da limpeza (ação destrutiva, sem desfazer)
+    if (confirmarLimpeza) {
+        AlertDialog(
+            onDismissRequest = { confirmarLimpeza = false },
+            icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text("Limpar todos os ensaios?") },
+            text = {
+                Text(
+                    "Isso vai apagar TODOS os $totalEnsaios ensaios (e suas medições) deste dispositivo. " +
+                        "Esta ação não pode ser desfeita."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.limparEnsaios()
+                        confirmarLimpeza = false
+                    }
+                ) {
+                    Text("Apagar tudo", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmarLimpeza = false }) { Text("Cancelar") }
+            }
+        )
     }
 }
 

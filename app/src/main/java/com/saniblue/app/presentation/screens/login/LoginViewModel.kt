@@ -52,12 +52,23 @@ class LoginViewModel @Inject constructor(
 
     fun fazerLogin() {
         val state = _uiState.value
+        // ⚠️ MODO TESTE: autenticação desabilitada — "Entrar" acessa o app direto,
+        // sem validar usuário/senha. Para reativar o login, restaure a chamada a
+        // authUseCase.login() (ver histórico do git / abaixo).
+        // Grava as escolhas do turno (método + maleta) na sessão, como no fluxo real.
+        sessaoTecnico.definir(state.metodoEnsaio, state.maletaSelecionada)
+        _uiState.value = state.copy(isLoading = false, error = null, loginSucesso = true)
+    }
+
+    /*
+    // Login real (desativado durante os testes):
+    fun fazerLogin() {
+        val state = _uiState.value
         viewModelScope.launch {
             _uiState.value = state.copy(isLoading = true, error = null)
             val result = authUseCase.login(state.login.trim(), state.senha)
             result.fold(
                 onSuccess = {
-                    // Grava as escolhas do turno (método + maleta) na sessão
                     sessaoTecnico.definir(state.metodoEnsaio, state.maletaSelecionada)
                     _uiState.value = _uiState.value.copy(isLoading = false, loginSucesso = true)
                 },
@@ -70,4 +81,5 @@ class LoginViewModel @Inject constructor(
             )
         }
     }
+    */
 }

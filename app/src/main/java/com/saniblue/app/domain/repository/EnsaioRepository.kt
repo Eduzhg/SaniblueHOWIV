@@ -10,5 +10,7 @@ interface EnsaioRepository {
     suspend fun getById(id: Long): Ensaio?
     suspend fun save(ensaio: Ensaio): Long
     suspend fun delete(id: Long)
+    /** Apaga todos os ensaios do banco local (uso de teste/manutenção). */
+    suspend fun deleteAll()
     fun getDashboardStats(): Flow<DashboardStats>
 }

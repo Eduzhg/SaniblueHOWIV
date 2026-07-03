@@ -23,6 +23,10 @@ interface EnsaioDao {
     @Delete
     suspend fun delete(ensaio: EnsaioEntity)
 
+    /** Apaga todos os ensaios (as vazões caem em cascata via ForeignKey). */
+    @Query("DELETE FROM ensaios")
+    suspend fun deleteAll()
+
     @Query("SELECT * FROM ensaios WHERE id = :id LIMIT 1")
     suspend fun getById(id: Long): EnsaioEntity?
 

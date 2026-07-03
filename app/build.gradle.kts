@@ -36,6 +36,11 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Assinado com a chave de debug para permitir instalar o APK release
+            // (otimizado pelo R8) direto nos tablets de teste — Compose em release
+            // é muito mais rápido que em debug. Trocar por keystore próprio se o
+            // app for distribuído por loja.
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
@@ -73,7 +78,6 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.splashscreen)
-    implementation(libs.androidx.security.crypto)
 
     // Compose BOM
     implementation(platform(libs.compose.bom))
@@ -103,9 +107,6 @@ dependencies {
 
     // ZXing - QR Code
     implementation(libs.zxing.core)
-
-    // Coil - Image loading
-    implementation(libs.coil.compose)
 
     // DataStore
     implementation(libs.datastore.preferences)
