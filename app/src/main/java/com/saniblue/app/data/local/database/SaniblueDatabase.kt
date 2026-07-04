@@ -18,7 +18,7 @@ import com.saniblue.app.data.local.entity.VazaoEnsaioEntity
         EnsaioEntity::class,
         VazaoEnsaioEntity::class
     ],
-    version = 4,
+    version = 6,
     exportSchema = true
 )
 abstract class SaniblueDatabase : RoomDatabase() {

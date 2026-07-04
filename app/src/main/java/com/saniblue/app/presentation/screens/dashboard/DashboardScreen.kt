@@ -166,8 +166,8 @@ fun DashboardScreen(
 
             QuickAccessItem(
                 icon = Icons.Default.BuildCircle,
-                title = "Cadastro de Hidrômetros",
-                subtitle = "Gerenciar modelos de hidrômetros",
+                title = "Hidrômetros Cadastrados",
+                subtitle = "Consultar capacidades e vazões de referência",
                 onClick = onNavigateToCadastroHidrometros
             )
 

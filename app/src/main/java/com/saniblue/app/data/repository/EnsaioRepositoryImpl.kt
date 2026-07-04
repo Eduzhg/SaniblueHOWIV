@@ -105,6 +105,11 @@ class EnsaioRepositoryImpl @Inject constructor(
         leituraFinalReprovado = leituraFinalReprovado,
         numeroSerieNovo = numeroSerieNovo,
         leituraInicialNovo = leituraInicialNovo,
+        clienteAcompanhou = clienteAcompanhou,
+        clienteRecusouDados = clienteRecusouDados,
+        acompanhanteNome = acompanhanteNome,
+        acompanhanteDocumento = acompanhanteDocumento,
+        acompanhanteTelefone = acompanhanteTelefone,
         resultadoFinal = runCatching { ResultadoFinal.valueOf(resultadoFinal) }.getOrDefault(ResultadoFinal.PENDENTE),
         vazoes = vazoes,
         createdAt = createdAt,
@@ -136,6 +141,11 @@ class EnsaioRepositoryImpl @Inject constructor(
         leituraFinalReprovado = leituraFinalReprovado,
         numeroSerieNovo = numeroSerieNovo,
         leituraInicialNovo = leituraInicialNovo,
+        clienteAcompanhou = clienteAcompanhou,
+        clienteRecusouDados = clienteRecusouDados,
+        acompanhanteNome = acompanhanteNome,
+        acompanhanteDocumento = acompanhanteDocumento,
+        acompanhanteTelefone = acompanhanteTelefone,
         resultadoFinal = resultadoFinal.name
     )
 

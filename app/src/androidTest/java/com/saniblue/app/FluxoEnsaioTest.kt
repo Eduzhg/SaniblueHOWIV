@@ -74,11 +74,19 @@ class FluxoEnsaioTest {
         compose.waitForIdle()
     }
 
+    /** Preenche todos os campos obrigatórios do cadastro (a Data já vem com a data atual). */
     private fun preencherCadastroMinimo() {
+        // O nº de série também preenche a idade do hidrômetro automaticamente
         compose.onNodeWithText("Nº Hidrômetro *").performScrollTo().performTextInput("Y20B123456")
+        compose.onNodeWithText("Nome da Companhia *").performScrollTo().performTextInput("Companhia Teste")
+        compose.onNodeWithText("Matrícula *").performScrollTo().performTextInput("12345")
         compose.onNodeWithText("Cliente *").performScrollTo().performTextInput("Cliente Teste UI")
-        compose.onNodeWithText("Data *").performScrollTo().performTextInput("03072026")
+        compose.onNodeWithText("Endereço *").performScrollTo().performTextInput("Rua Teste, 100")
+        compose.onNodeWithText("Bairro *").performScrollTo().performTextInput("Centro")
+        compose.onNodeWithText("Cidade *").performScrollTo().performTextInput("Blumenau")
+        compose.onNodeWithText("Temp. Água (°C) *").performScrollTo().performTextInput("20")
         compose.onNodeWithText("Técnico Responsável *").performScrollTo().performTextInput("Técnico UI")
+        compose.onNodeWithText("Pressão Média (mca) *").performScrollTo().performTextInput("25")
     }
 
     /** Preenche uma das 3 medições da vazão em tela (índice 0..2). */

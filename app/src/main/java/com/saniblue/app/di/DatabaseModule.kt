@@ -52,16 +52,12 @@ object DatabaseModule {
         DatabasePrePopulate.getModelosHidrometro().forEach { m ->
             database.execSQL(
                 """INSERT INTO hidrometro_modelos
-                   (nome, descricao, vazao_nominal, vazao_transicao, vazao_minima,
-                    limite_nominal_min, limite_nominal_max,
-                    limite_transicao_min, limite_transicao_max,
-                    limite_minima_min, limite_minima_max, ativo, created_at)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                   (nome, descricao, norma, letra, classe_r,
+                    vazao_nominal, vazao_transicao, vazao_minima, ativo, created_at)
+                   VALUES (?,?,?,?,?,?,?,?,?,?)""",
                 arrayOf(
-                    m.nome, m.descricao, m.vazaoNominal, m.vazaoTransicao, m.vazaoMinima,
-                    m.limiteNominalMin, m.limiteNominalMax,
-                    m.limiteTransicaoMin, m.limiteTransicaoMax,
-                    m.limiteMinimaMin, m.limiteMinimaMax,
+                    m.nome, m.descricao, m.norma, m.letra, m.classeR,
+                    m.vazaoNominal, m.vazaoTransicao, m.vazaoMinima,
                     if (m.ativo) 1 else 0, m.createdAt
                 )
             )

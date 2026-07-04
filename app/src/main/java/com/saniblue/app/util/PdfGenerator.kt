@@ -62,6 +62,8 @@ class PdfGenerator @Inject constructor(private val context: Context) {
                 drawDadosSubstituicao(ensaio)
             }
         }
+        drawAcompanhamentoCliente(ensaio)
+        drawAssinatura(ensaio)
         drawRodape(ensaio)
 
         document.finishPage(page)
@@ -370,7 +372,7 @@ class PdfGenerator @Inject constructor(private val context: Context) {
         val pares = listOf(
             "Leitura Final do Hidrômetro Reprovado" to ensaio.leituraFinalReprovado.ifBlank { "-" },
             "Nº de Série do Novo Hidrômetro"        to ensaio.numeroSerieNovo.ifBlank { "-" },
-            "Leitura Inicial do Hidrômetro Instalado" to ensaio.leituraInicialNovo.ifBlank { "-" }
+            "Leitura Inicial do Novo Hidrômetro" to ensaio.leituraInicialNovo.ifBlank { "-" }
         )
         pares.forEach { (lbl, v) ->
             checkSpace(26f)
@@ -381,6 +383,66 @@ class PdfGenerator @Inject constructor(private val context: Context) {
         }
         canvas.drawLine(ML, y, PW - ML, y, strokePaint(Color.LTGRAY, 0.4f))
         y += 8f
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Acompanhamento do ensaio pelo cliente
+    // ─────────────────────────────────────────────────────────────────
+
+    private fun drawAcompanhamentoCliente(ensaio: Ensaio) {
+        checkSpace(60f)
+        y += 4f
+        drawTitulo("ACOMPANHAMENTO DO CLIENTE")
+
+        if (!ensaio.clienteAcompanhou) {
+            checkSpace(22f)
+            canvas.drawText("O cliente não acompanhou o ensaio.",
+                ML + 2f, y + 12f, textPaint(Color.BLACK, 9f))
+            y += 22f
+            return
+        }
+
+        if (ensaio.clienteRecusouDados) {
+            checkSpace(22f)
+            canvas.drawText("O cliente acompanhou o ensaio, mas recusou fornecer seus dados.",
+                ML + 2f, y + 12f, textPaint(Color.BLACK, 9f, bold = true))
+            y += 22f
+            return
+        }
+
+        val pares = listOf(
+            "Nome"              to ensaio.acompanhanteNome.ifBlank { "-" },
+            "Documento (CPF/RG)" to ensaio.acompanhanteDocumento.ifBlank { "-" },
+            "Telefone"          to ensaio.acompanhanteTelefone.ifBlank { "-" }
+        )
+        pares.forEach { (lbl, v) ->
+            checkSpace(26f)
+            canvas.drawLine(ML, y, PW - ML, y, strokePaint(Color.LTGRAY, 0.4f))
+            canvas.drawText(lbl, ML + 2f, y + 9f, textPaint(Color.GRAY, 7.5f))
+            canvas.drawText(trunc(v, 60), ML + 2f, y + 20f, textPaint(Color.BLACK, 9f, bold = true))
+            y += 26f
+        }
+        canvas.drawLine(ML, y, PW - ML, y, strokePaint(Color.LTGRAY, 0.4f))
+        y += 8f
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Assinatura do técnico responsável
+    // ─────────────────────────────────────────────────────────────────
+
+    private fun drawAssinatura(ensaio: Ensaio) {
+        // Espaço em branco para assinar + linha + identificação
+        checkSpace(96f)
+        y += 44f
+
+        val cx   = PW / 2f
+        val meia = 120f
+        canvas.drawLine(cx - meia, y, cx + meia, y, strokePaint(Color.BLACK, 0.8f))
+        canvas.drawText(ensaio.tecnicoResponsavel,
+            cx, y + 13f, textPaint(Color.BLACK, 9f, bold = true, align = Paint.Align.CENTER))
+        canvas.drawText("Assinatura do Técnico Responsável",
+            cx, y + 25f, textPaint(Color.GRAY, 7.5f, align = Paint.Align.CENTER))
+        y += 34f
     }
 
     // ─────────────────────────────────────────────────────────────────

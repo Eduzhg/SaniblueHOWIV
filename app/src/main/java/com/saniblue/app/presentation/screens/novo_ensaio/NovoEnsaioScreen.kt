@@ -29,10 +29,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -54,9 +51,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -70,6 +65,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.saniblue.app.domain.model.ClasseHidrometro
 import com.saniblue.app.domain.model.MetodoEnsaio
 import com.saniblue.app.domain.model.MotivosNaoRealizado
 import com.saniblue.app.domain.model.NormaEnsaio
@@ -136,7 +132,8 @@ fun NovoEnsaioScreen(
                 passo = passo,
                 ultimoPasso = ultimoPasso,
                 isLoading = uiState.isLoading,
-                onVoltar = { viewModel.passoAnterior() },
+                // No primeiro passo, Voltar sai do ensaio (volta à tela anterior)
+                onVoltar = { if (passo == 0) onNavigateBack() else viewModel.passoAnterior() },
                 onProximo = { viewModel.proximoPasso() },
                 onSalvar = { viewModel.salvar(ensaioId) }
             )
@@ -285,7 +282,6 @@ private fun WizardBottomBar(
         ) {
             OutlinedButton(
                 onClick = onVoltar,
-                enabled = passo > 0,
                 modifier = Modifier
                     .weight(1f)
                     .height(52.dp),
@@ -349,31 +345,6 @@ private fun PassoCadastro(uiState: NovoEnsaioUiState, viewModel: NovoEnsaioViewM
             }
         }
 
-        // === NORMA ===
-        SectionHeader(title = "Norma do Ensaio")
-        Column {
-            Text("Norma", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                NormaEnsaio.entries.forEach { norma ->
-                    FilterChip(
-                        selected = uiState.norma == norma,
-                        onClick = { viewModel.selectNorma(norma) },
-                        label = { Text(norma.label) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = SaniblueBlue,
-                            selectedLabelColor = Color.White
-                        )
-                    )
-                }
-            }
-            Text(
-                text = uiState.norma.descricao,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 2.dp)
-            )
-        }
-
         // Método + maleta vêm do login (só leitura)
         Card(
             colors = CardDefaults.cardColors(containerColor = SaniblueBlue.copy(alpha = 0.08f)),
@@ -389,40 +360,12 @@ private fun PassoCadastro(uiState: NovoEnsaioUiState, viewModel: NovoEnsaioViewM
         // === DADOS CADASTRAIS ===
         SectionHeader(title = "Dados Cadastrais")
 
-        // Modelo de hidrômetro (define as vazões de referência)
-        var expanded by remember { mutableStateOf(false) }
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = it }
-        ) {
-            OutlinedTextField(
-                value = uiState.modeloSelecionado?.nome ?: "Selecione o modelo",
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("Modelo do Hidrômetro *") },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor()
-            )
-            ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                uiState.modelos.forEach { modelo ->
-                    DropdownMenuItem(
-                        text = { Text(modelo.nome) },
-                        onClick = {
-                            viewModel.selectModelo(modelo.id)
-                            expanded = false
-                        }
-                    )
-                }
-            }
-        }
-
         OutlinedTextField(
             value = uiState.nomeCompanhia,
             onValueChange = viewModel::updateNomeCompanhia,
-            label = { Text("Nome da Companhia") },
+            label = { Text("Nome da Companhia *") },
             placeholder = { Text("Ex.: Samae - Blumenau (SC)") },
+            isError = uiState.validationErrors.containsKey("nomeCompanhia"),
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
@@ -435,28 +378,97 @@ private fun PassoCadastro(uiState: NovoEnsaioUiState, viewModel: NovoEnsaioViewM
                 isError = uiState.validationErrors.containsKey("numeroHidrometro"),
                 modifier = Modifier.weight(1f),
                 singleLine = true,
-                placeholder = { Text("A99A999999") },
-                supportingText = {
-                    Text(
-                        uiState.validationErrors["numeroHidrometro"] ?: "Letra, 2 nº, letra, 6 nº",
-                        color = if (uiState.validationErrors.containsKey("numeroHidrometro"))
-                            MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                placeholder = { Text("Y20B123456") },
+                supportingText = uiState.validationErrors["numeroHidrometro"]?.let {
+                    { Text(it, color = MaterialTheme.colorScheme.error) }
                 }
             )
             OutlinedTextField(
                 value = uiState.matricula,
                 onValueChange = viewModel::updateMatricula,
-                label = { Text("Matrícula") },
+                label = { Text("Matrícula *") },
+                isError = uiState.validationErrors.containsKey("matricula"),
                 modifier = Modifier.weight(1f),
                 singleLine = true
             )
         }
 
+        // === NORMA E MODELO DETECTADOS AUTOMATICAMENTE PELO Nº DE SÉRIE ===
+        if (uiState.numeroHidrometro.length >= 5) {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = if (uiState.capacidadeNaoCadastrada)
+                        PendenteOrangeContainer else SaniblueBlue.copy(alpha = 0.08f)
+                ),
+                elevation = CardDefaults.cardElevation(0.dp)
+            ) {
+                Column(
+                    Modifier.fillMaxWidth().padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "Norma detectada: ${uiState.norma.label}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (uiState.capacidadeNaoCadastrada) PendenteOrange else SaniblueBlue
+                    )
+                    when {
+                        uiState.capacidadeNaoCadastrada -> Text(
+                            text = "Capacidade não cadastrada para a letra '${uiState.numeroHidrometro.first()}'. " +
+                                "As vazões de referência não estarão disponíveis, mas os limites de erro da " +
+                                "norma (%) serão aplicados normalmente.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = PendenteOrange
+                        )
+                        uiState.modeloSelecionado != null -> Text(
+                            text = "Modelo: ${uiState.modeloSelecionado.nome}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        uiState.norma == NormaEnsaio.PORTARIA_155 -> Text(
+                            text = "Selecione a classe do hidrômetro abaixo para identificar as vazões.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    if (uiState.norma == NormaEnsaio.PORTARIA_155 && !uiState.capacidadeNaoCadastrada) {
+                        Text(
+                            "Classe do hidrômetro *",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            ClasseHidrometro.entries.forEach { classe ->
+                                FilterChip(
+                                    selected = uiState.classeR == classe,
+                                    onClick = { viewModel.selectClasseR(classe) },
+                                    label = { Text(classe.label) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = SaniblueBlue,
+                                        selectedLabelColor = Color.White
+                                    )
+                                )
+                            }
+                        }
+                        if (uiState.validationErrors.containsKey("classeR")) {
+                            Text(
+                                uiState.validationErrors["classeR"]!!,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         OutlinedTextField(
             value = uiState.idadeHidrometro,
             onValueChange = viewModel::updateIdadeHidrometro,
-            label = { Text("Idade do Hidrômetro (automática pelo nº de série)") },
+            label = { Text("Idade do Hidrômetro (automática pelo nº de série) *") },
+            isError = uiState.validationErrors.containsKey("idadeHidrometro"),
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
@@ -473,7 +485,8 @@ private fun PassoCadastro(uiState: NovoEnsaioUiState, viewModel: NovoEnsaioViewM
         OutlinedTextField(
             value = uiState.endereco,
             onValueChange = viewModel::updateEndereco,
-            label = { Text("Endereço") },
+            label = { Text("Endereço *") },
+            isError = uiState.validationErrors.containsKey("endereco"),
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
@@ -482,14 +495,16 @@ private fun PassoCadastro(uiState: NovoEnsaioUiState, viewModel: NovoEnsaioViewM
             OutlinedTextField(
                 value = uiState.bairro,
                 onValueChange = viewModel::updateBairro,
-                label = { Text("Bairro") },
+                label = { Text("Bairro *") },
+                isError = uiState.validationErrors.containsKey("bairro"),
                 modifier = Modifier.weight(1f),
                 singleLine = true
             )
             OutlinedTextField(
                 value = uiState.cidade,
                 onValueChange = viewModel::updateCidade,
-                label = { Text("Cidade") },
+                label = { Text("Cidade *") },
+                isError = uiState.validationErrors.containsKey("cidade"),
                 modifier = Modifier.weight(1f),
                 singleLine = true
             )
@@ -516,7 +531,8 @@ private fun PassoCadastro(uiState: NovoEnsaioUiState, viewModel: NovoEnsaioViewM
             OutlinedTextField(
                 value = uiState.temperaturaAgua,
                 onValueChange = viewModel::updateTemperaturaAgua,
-                label = { Text("Temp. Água (°C)") },
+                label = { Text("Temp. Água (°C) *") },
+                isError = uiState.validationErrors.containsKey("temperaturaAgua"),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier.weight(1f),
                 singleLine = true
@@ -535,7 +551,8 @@ private fun PassoCadastro(uiState: NovoEnsaioUiState, viewModel: NovoEnsaioViewM
             OutlinedTextField(
                 value = uiState.pressaoMedia,
                 onValueChange = viewModel::updatePressaoMedia,
-                label = { Text("Pressão Média (mca)") },
+                label = { Text("Pressão Média (mca) *") },
+                isError = uiState.validationErrors.containsKey("pressaoMedia"),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier.weight(1f),
                 singleLine = true
@@ -615,11 +632,18 @@ private fun PassoVazao(tipo: TipoVazao, uiState: NovoEnsaioUiState, viewModel: N
         TipoVazao.MINIMA -> uiState.minima
     }
     val titulo = uiState.norma.labelPara(tipo)
-    val vazaoRef = uiState.modeloSelecionado?.let {
-        when (tipo) {
-            TipoVazao.NOMINAL -> it.vazaoNominal.toInt()
-            TipoVazao.TRANSICAO -> it.vazaoTransicao.toInt()
-            TipoVazao.MINIMA -> it.vazaoMinima.toInt()
+    // Convenção da tabela de referência: Q3/Nominal da Portaria 155 é em m³/h;
+    // as demais vazões (e a Portaria 246 inteira) são em L/h.
+    val vazaoRefTexto = uiState.modeloSelecionado?.let { modelo ->
+        if (tipo == TipoVazao.NOMINAL && uiState.norma == NormaEnsaio.PORTARIA_155) {
+            "${formatM3h(modelo.vazaoNominal)} m³/h"
+        } else {
+            val litros = when (tipo) {
+                TipoVazao.NOMINAL -> modelo.vazaoNominal
+                TipoVazao.TRANSICAO -> modelo.vazaoTransicao
+                TipoVazao.MINIMA -> modelo.vazaoMinima
+            }
+            "${litros.toInt()} L/h"
         }
     }
 
@@ -652,7 +676,8 @@ private fun PassoVazao(tipo: TipoVazao, uiState: NovoEnsaioUiState, viewModel: N
             ) {
                 Column(Modifier.padding(12.dp)) {
                     Text(
-                        text = "${uiState.modeloSelecionado?.nome ?: "Sem modelo"}  •  ${uiState.norma.label}",
+                        // O nome já inclui a norma (ex.: "... — Portaria 246")
+                        text = uiState.modeloSelecionado?.nome ?: "Sem modelo",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = SaniblueBlue
@@ -661,7 +686,7 @@ private fun PassoVazao(tipo: TipoVazao, uiState: NovoEnsaioUiState, viewModel: N
                     Text(
                         text = buildString {
                             append("Limite: ${uiState.norma.limiteLabel(tipo)}")
-                            if (vazaoRef != null) append("  •  Vazão: $vazaoRef L/h")
+                            if (vazaoRefTexto != null) append("  •  Vazão: $vazaoRefTexto")
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -741,14 +766,10 @@ private fun PassoResultado(uiState: NovoEnsaioUiState, viewModel: NovoEnsaioView
                 value = uiState.numeroSerieNovo,
                 onValueChange = viewModel::updateNumeroSerieNovo,
                 label = { Text("Nº de Série do Novo Hidrômetro") },
-                placeholder = { Text("A99A999999") },
+                placeholder = { Text("Y20B123456") },
                 isError = uiState.validationErrors.containsKey("numeroSerieNovo"),
-                supportingText = {
-                    Text(
-                        uiState.validationErrors["numeroSerieNovo"] ?: "Letra, 2 nº, letra, 6 nº",
-                        color = if (uiState.validationErrors.containsKey("numeroSerieNovo"))
-                            MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                supportingText = uiState.validationErrors["numeroSerieNovo"]?.let {
+                    { Text(it, color = MaterialTheme.colorScheme.error) }
                 },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
@@ -756,11 +777,86 @@ private fun PassoResultado(uiState: NovoEnsaioUiState, viewModel: NovoEnsaioView
             OutlinedTextField(
                 value = uiState.leituraInicialNovo,
                 onValueChange = viewModel::updateLeituraInicialNovo,
-                label = { Text("Leitura Inicial do Hidrômetro Instalado") },
+                label = { Text("Leitura Inicial do Novo Hidrômetro") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
+        }
+
+        // === ACOMPANHAMENTO DO CLIENTE ===
+        SectionHeader(title = "Acompanhamento do Cliente")
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Cliente acompanhou o ensaio",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+            Switch(
+                checked = uiState.clienteAcompanhou,
+                onCheckedChange = { viewModel.setClienteAcompanhou(it) }
+            )
+        }
+
+        if (uiState.clienteAcompanhou) {
+            if (uiState.clienteRecusouDados) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = PendenteOrangeContainer),
+                    elevation = CardDefaults.cardElevation(0.dp)
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Cliente recusou informar os dados.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = PendenteOrange,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TextButton(onClick = { viewModel.setClienteRecusouDados(false) }) {
+                            Text("Desfazer")
+                        }
+                    }
+                }
+            } else {
+                OutlinedTextField(
+                    value = uiState.acompanhanteNome,
+                    onValueChange = viewModel::updateAcompanhanteNome,
+                    label = { Text("Nome do Cliente *") },
+                    isError = uiState.validationErrors.containsKey("acompanhanteNome"),
+                    supportingText = uiState.validationErrors["acompanhanteNome"]?.let {
+                        { Text(it, color = MaterialTheme.colorScheme.error) }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = uiState.acompanhanteDocumento,
+                        onValueChange = viewModel::updateAcompanhanteDocumento,
+                        label = { Text("Documento (CPF/RG)") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = uiState.acompanhanteTelefone,
+                        onValueChange = viewModel::updateAcompanhanteTelefone,
+                        label = { Text("Telefone") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
+                }
+                TextButton(onClick = { viewModel.setClienteRecusouDados(true) }) {
+                    Text("Cliente recusou informar os dados")
+                }
+            }
         }
 
         uiState.error?.let { erro ->
@@ -892,6 +988,12 @@ private fun ResultadoFinalCard(resultado: ResultadoFinal) {
 }
 
 private data class Quadruplet<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
+
+/** Converte L/h para m³/h, sem casas decimais desnecessárias (ex.: 1600.0 → "1.6", 1000.0 → "1"). */
+private fun formatM3h(litrosPorHora: Double): String {
+    val s = "%.3f".format(litrosPorHora / 1000.0)
+    return s.trimEnd('0').trimEnd('.')
+}
 
 /**
  * Máscara visual DD/MM/AAAA para TextField.

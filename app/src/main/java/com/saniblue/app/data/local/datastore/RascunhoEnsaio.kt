@@ -28,6 +28,11 @@ data class RascunhoEnsaio(
     val leituraFinalReprovado: String = "",
     val numeroSerieNovo: String = "",
     val leituraInicialNovo: String = "",
+    val clienteAcompanhou: Boolean = false,
+    val clienteRecusouDados: Boolean = false,
+    val acompanhanteNome: String = "",
+    val acompanhanteDocumento: String = "",
+    val acompanhanteTelefone: String = "",
     val nominal: RascunhoVazao = RascunhoVazao(),
     val transicao: RascunhoVazao = RascunhoVazao(),
     val minima: RascunhoVazao = RascunhoVazao()
@@ -71,6 +76,11 @@ object RascunhoEnsaioSerializer {
         put("lfReprovado", r.leituraFinalReprovado)
         put("serieNovo", r.numeroSerieNovo)
         put("liNovo", r.leituraInicialNovo)
+        put("cliAcompanhou", r.clienteAcompanhou)
+        put("cliRecusou", r.clienteRecusouDados)
+        put("acompNome", r.acompanhanteNome)
+        put("acompDoc", r.acompanhanteDocumento)
+        put("acompTel", r.acompanhanteTelefone)
         put("nominal", vazaoToJson(r.nominal))
         put("transicao", vazaoToJson(r.transicao))
         put("minima", vazaoToJson(r.minima))
@@ -99,6 +109,11 @@ object RascunhoEnsaioSerializer {
             leituraFinalReprovado = o.optString("lfReprovado"),
             numeroSerieNovo = o.optString("serieNovo"),
             leituraInicialNovo = o.optString("liNovo"),
+            clienteAcompanhou = o.optBoolean("cliAcompanhou", false),
+            clienteRecusouDados = o.optBoolean("cliRecusou", false),
+            acompanhanteNome = o.optString("acompNome"),
+            acompanhanteDocumento = o.optString("acompDoc"),
+            acompanhanteTelefone = o.optString("acompTel"),
             nominal = vazaoFromJson(o.optJSONObject("nominal")),
             transicao = vazaoFromJson(o.optJSONObject("transicao")),
             minima = vazaoFromJson(o.optJSONObject("minima"))

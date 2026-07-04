@@ -67,6 +67,13 @@ data class EnsaioEntity(
     @ColumnInfo("numero_serie_novo") val numeroSerieNovo: String = "",
     @ColumnInfo("leitura_inicial_novo") val leituraInicialNovo: String = "",
 
+    // Acompanhamento do ensaio pelo cliente (testemunha)
+    @ColumnInfo("cliente_acompanhou") val clienteAcompanhou: Boolean = false,
+    @ColumnInfo("cliente_recusou_dados") val clienteRecusouDados: Boolean = false,
+    @ColumnInfo("acompanhante_nome") val acompanhanteNome: String = "",
+    @ColumnInfo("acompanhante_documento") val acompanhanteDocumento: String = "",
+    @ColumnInfo("acompanhante_telefone") val acompanhanteTelefone: String = "",
+
     // Resultado calculado e armazenado
     @ColumnInfo("resultado_final") val resultadoFinal: String = "PENDENTE",
 

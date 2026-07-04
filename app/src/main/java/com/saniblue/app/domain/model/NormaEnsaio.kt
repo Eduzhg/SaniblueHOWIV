@@ -43,7 +43,7 @@ enum class NormaEnsaio(
     PORTARIA_155(
         label = "Portaria 155",
         descricao = "Portaria Inmetro 155 — Q3 / Q2 / Q1",
-        labelNominal = "Vazão Permanente (Q3)",
+        labelNominal = "Vazão Nominal (Q3)",
         labelTransicao = "Vazão de Transição (Q2)",
         labelMinima = "Vazão Mínima (Q1)",
         // TODO: confirmar limites oficiais da Portaria 155 em serviço
@@ -93,4 +93,14 @@ enum class MetodoEnsaio(val label: String, val descricao: String) {
         "Comparativo por leitura",
         "Volume calculado pela leitura do padrão ultrassônico"
     )
+}
+
+/**
+ * Classe metrológica do hidrômetro (só existe na Portaria 155). Define as vazões
+ * de Transição (Q2) e Mínima (Q1) — a Nominal (Q3) já é fixa pela letra do nº de
+ * série. O técnico identifica a classe visualmente no corpo do hidrômetro, pois
+ * ela não é codificada no número de série.
+ */
+enum class ClasseHidrometro(val label: String) {
+    R80("R80"), R100("R100"), R125("R125")
 }

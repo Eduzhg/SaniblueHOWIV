@@ -32,6 +32,12 @@ data class Ensaio(
     val leituraFinalReprovado: String = "",
     val numeroSerieNovo: String = "",
     val leituraInicialNovo: String = "",
+    // Acompanhamento do ensaio pelo cliente (testemunha)
+    val clienteAcompanhou: Boolean = false,
+    val clienteRecusouDados: Boolean = false,
+    val acompanhanteNome: String = "",
+    val acompanhanteDocumento: String = "",
+    val acompanhanteTelefone: String = "",
     val vazoes: List<VazaoEnsaio> = emptyList(),
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()

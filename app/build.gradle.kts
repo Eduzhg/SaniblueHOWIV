@@ -115,6 +115,11 @@ dependencies {
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)
 
+    // Espresso 3.6+ exige tracing >= 1.1; a resolução consistente do AGP força os testes
+    // à versão do app, então o upgrade precisa ficar aqui (sem isto: NoSuchMethodError
+    // forceEnableAppTracing e o teste não enxerga a árvore do Compose)
+    implementation("androidx.tracing:tracing:1.2.0")
+
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

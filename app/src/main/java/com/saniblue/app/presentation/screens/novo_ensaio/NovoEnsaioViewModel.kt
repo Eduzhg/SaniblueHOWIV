@@ -2,6 +2,7 @@ package com.saniblue.app.presentation.screens.novo_ensaio
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.saniblue.app.domain.model.ClasseHidrometro
 import com.saniblue.app.domain.model.Ensaio
 import com.saniblue.app.domain.model.HidrometroModelo
 import com.saniblue.app.domain.model.MetodoEnsaio
@@ -21,7 +22,9 @@ import com.saniblue.app.domain.usecase.CalcularIdadeHidrometroUseCase
 import com.saniblue.app.domain.usecase.SaveEnsaioUseCase
 import com.saniblue.app.util.filtrarDecimal
 import com.saniblue.app.util.filtrarSerialHidrometro
+import com.saniblue.app.util.isLetraCapacidadeConhecida
 import com.saniblue.app.util.isSerialHidrometroValido
+import com.saniblue.app.util.normaDoSerial
 import com.saniblue.app.util.toDoubleLocale
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.FlowPreview
@@ -119,10 +122,15 @@ data class NovoEnsaioUiState(
     // Rascunho restaurado de uma sessão anterior (mostra aviso ao técnico)
     val rascunhoRestaurado: Boolean = false,
 
-    // Modelo do hidrômetro (fornece as vazões de referência)
-    val modelos: List<HidrometroModelo> = emptyList(),
+    // Modelo do hidrômetro — resolvido automaticamente pelo nº de série (norma + letra
+    // + classe R quando aplicável), nunca escolhido manualmente
     val modeloSelecionadoId: Long = 0L,
     val modeloSelecionado: HidrometroModelo? = null,
+    // Classe metrológica (R80/R100/R125) — só a Portaria 155 exige; identificada
+    // visualmente pelo técnico no corpo do hidrômetro (não vem no nº de série)
+    val classeR: ClasseHidrometro? = null,
+    // Letra do nº de série não corresponde a nenhuma capacidade cadastrada (aviso, não bloqueia a digitação)
+    val capacidadeNaoCadastrada: Boolean = false,
 
     // Medições por vazão
     val nominal: VazaoState = VazaoState(),
@@ -136,6 +144,13 @@ data class NovoEnsaioUiState(
     val leituraFinalReprovado: String = "",
     val numeroSerieNovo: String = "",
     val leituraInicialNovo: String = "",
+
+    // Acompanhamento do ensaio pelo cliente (testemunha)
+    val clienteAcompanhou: Boolean = false,
+    val clienteRecusouDados: Boolean = false,
+    val acompanhanteNome: String = "",
+    val acompanhanteDocumento: String = "",
+    val acompanhanteTelefone: String = "",
 
     // Controle de UI
     val isLoading: Boolean = false,
@@ -170,7 +185,9 @@ class NovoEnsaioViewModel @Inject constructor(
             // Método e maleta vêm do login (sessão do turno)
             metodoEnsaio = sessao.metodoEnsaio,
             maletaNome = sessao.maleta.nome,
-            erroPadrao = sessao.maleta.erroPadrao
+            erroPadrao = sessao.maleta.erroPadrao,
+            // Data do ensaio já vem com a data atual (editável)
+            dataEnsaio = dataAtualDigits()
         )
     )
     val uiState: StateFlow<NovoEnsaioUiState> = _uiState.asStateFlow()
@@ -182,6 +199,10 @@ class NovoEnsaioViewModel @Inject constructor(
         // Acima deste erro (%) a leitura é considerada suspeita (provável erro de
         // digitação) e pede confirmação. Ajuste conforme necessário.
         private const val LIMITE_ALERTA_ERRO = 50.0
+
+        /** Data de hoje como dígitos "ddMMaaaa" (formato interno do campo Data). */
+        private fun dataAtualDigits(): String =
+            java.text.SimpleDateFormat("ddMMyyyy", Locale("pt", "BR")).format(java.util.Date())
     }
 
     init {
@@ -191,18 +212,6 @@ class NovoEnsaioViewModel @Inject constructor(
                 if (ensaioIdAtual == 0L && !s.isSaved && temAlgumDado(s)) {
                     runCatching { rascunhoStore.salvar(paraRascunho(s)) }
                 }
-            }
-        }
-
-        viewModelScope.launch {
-            hidrometroRepository.getAll().collect { modelos ->
-                val primeiro = modelos.firstOrNull()
-                _uiState.value = _uiState.value.copy(
-                    modelos = modelos,
-                    modeloSelecionadoId = _uiState.value.modeloSelecionadoId.takeIf { it != 0L }
-                        ?: primeiro?.id ?: 0L,
-                    modeloSelecionado = _uiState.value.modeloSelecionado ?: primeiro
-                )
             }
         }
     }
@@ -254,13 +263,19 @@ class NovoEnsaioViewModel @Inject constructor(
                 motivoNaoRealizado = ensaio.motivoNaoRealizado,
                 modeloSelecionadoId = ensaio.hidrometroModeloId,
                 modeloSelecionado = modelo,
+                classeR = modelo?.classeR,
                 nominal = nominal?.toVazaoState() ?: VazaoState(),
                 transicao = transicao?.toVazaoState() ?: VazaoState(),
                 minima = minima?.toVazaoState() ?: VazaoState(),
                 resultadoFinal = ensaio.resultadoFinal,
                 leituraFinalReprovado = ensaio.leituraFinalReprovado,
                 numeroSerieNovo = ensaio.numeroSerieNovo,
-                leituraInicialNovo = ensaio.leituraInicialNovo
+                leituraInicialNovo = ensaio.leituraInicialNovo,
+                clienteAcompanhou = ensaio.clienteAcompanhou,
+                clienteRecusouDados = ensaio.clienteRecusouDados,
+                acompanhanteNome = ensaio.acompanhanteNome,
+                acompanhanteDocumento = ensaio.acompanhanteDocumento,
+                acompanhanteTelefone = ensaio.acompanhanteTelefone
             )
             // Recalcular aprovações individuais após carregar os dados
             recalcularTudo()
@@ -300,11 +315,14 @@ class NovoEnsaioViewModel @Inject constructor(
 
     // --- Field updates ---
 
-    fun updateNumeroHidrometro(v: String) = update {
-        // Máscara fixa Letra-NN-Letra-NNNNNN (10 caracteres)
-        val serial = v.filtrarSerialHidrometro()
-        // Idade preenchida automaticamente a partir do nº de série (ex.: Y20B → fab. 2020)
-        copy(numeroHidrometro = serial, idadeHidrometro = calcularIdade(serial) ?: idadeHidrometro)
+    fun updateNumeroHidrometro(v: String) {
+        update {
+            // Máscara adaptativa: 10 caracteres (Portaria 246) ou 12 (Portaria 155)
+            val serial = v.filtrarSerialHidrometro()
+            // Idade preenchida automaticamente a partir do nº de série (ex.: Y20B → fab. 2020)
+            copy(numeroHidrometro = serial, idadeHidrometro = calcularIdade(serial) ?: idadeHidrometro)
+        }
+        resolverModeloAutomatico()
     }
     fun updateCliente(v: String) = update { copy(cliente = v) }
     fun updateNomeCompanhia(v: String) = update { copy(nomeCompanhia = v) }
@@ -334,6 +352,26 @@ class NovoEnsaioViewModel @Inject constructor(
     fun updateLeituraFinalReprovado(v: String) = update { copy(leituraFinalReprovado = v.filtrarDecimal()) }
     // Mesmo formato do nº de série principal: Letra-NN-Letra-NNNNNN
     fun updateNumeroSerieNovo(v: String) = update { copy(numeroSerieNovo = v.filtrarSerialHidrometro()) }
+
+    // Acompanhamento do ensaio pelo cliente
+    fun setClienteAcompanhou(acompanhou: Boolean) = update {
+        // Desligar limpa também a recusa e os dados digitados
+        if (acompanhou) copy(clienteAcompanhou = true)
+        else copy(
+            clienteAcompanhou = false, clienteRecusouDados = false,
+            acompanhanteNome = "", acompanhanteDocumento = "", acompanhanteTelefone = ""
+        )
+    }
+    fun setClienteRecusouDados(recusou: Boolean) = update {
+        // Recusa registra a negativa e limpa os dados
+        if (recusou) copy(
+            clienteRecusouDados = true,
+            acompanhanteNome = "", acompanhanteDocumento = "", acompanhanteTelefone = ""
+        ) else copy(clienteRecusouDados = false)
+    }
+    fun updateAcompanhanteNome(v: String) = update { copy(acompanhanteNome = v) }
+    fun updateAcompanhanteDocumento(v: String) = update { copy(acompanhanteDocumento = v) }
+    fun updateAcompanhanteTelefone(v: String) = update { copy(acompanhanteTelefone = v.filter { c -> c.isDigit() || c in " ()-+" }) }
     fun updateLeituraInicialNovo(v: String) = update { copy(leituraInicialNovo = v.filtrarDecimal()) }
 
     // Alerta de leitura suspeita
@@ -351,15 +389,59 @@ class NovoEnsaioViewModel @Inject constructor(
     }
     fun descartarAlerta() = update { copy(alertaLeitura = null) }
 
-    fun selectNorma(norma: NormaEnsaio) {
-        update { copy(norma = norma) }
-        recalcularTudo()
+    /**
+     * Escolha manual da classe metrológica do hidrômetro (R80/R100/R125) — só existe
+     * na Portaria 155; o técnico identifica visualmente no corpo do hidrômetro, pois
+     * ela não é codificada no nº de série (ao contrário da norma e da capacidade).
+     */
+    fun selectClasseR(classe: ClasseHidrometro) {
+        update { copy(classeR = classe) }
+        resolverModeloAutomatico()
     }
 
-    fun selectModelo(id: Long) {
+    /**
+     * Resolve automaticamente norma + modelo (capacidade/vazões de referência) a partir
+     * do nº de série digitado. A Portaria 155, além da letra, também precisa da classe R
+     * (escolhida manualmente) para determinar Q2/Q1. Se a letra não tiver catálogo
+     * cadastrado, avisa (não bloqueia) e segue usando só os limites (%) da norma.
+     */
+    private fun resolverModeloAutomatico() {
         viewModelScope.launch {
-            val modelo = hidrometroRepository.getById(id)
-            update { copy(modeloSelecionadoId = id, modeloSelecionado = modelo) }
+            val s = _uiState.value
+            val serialNorma = s.numeroHidrometro.normaDoSerial()
+
+            if (serialNorma == null) {
+                update { copy(modeloSelecionado = null, modeloSelecionadoId = 0L, capacidadeNaoCadastrada = false) }
+                return@launch
+            }
+
+            // Serial de outra norma que a anteriormente detectada — reseta a classe R
+            val normaMudou = serialNorma != s.norma
+            val classeR = if (normaMudou) null else s.classeR
+            if (normaMudou) update { copy(norma = serialNorma, classeR = null) }
+
+            val letra = s.numeroHidrometro.first()
+            if (!letra.isLetraCapacidadeConhecida(serialNorma)) {
+                update { copy(modeloSelecionado = null, modeloSelecionadoId = 0L, capacidadeNaoCadastrada = true) }
+                return@launch
+            }
+
+            // Portaria 155 com letra conhecida ainda precisa da classe R para Q2/Q1
+            if (serialNorma == NormaEnsaio.PORTARIA_155 && classeR == null) {
+                update { copy(modeloSelecionado = null, modeloSelecionadoId = 0L, capacidadeNaoCadastrada = false) }
+                return@launch
+            }
+
+            val classeParaLookup = if (serialNorma == NormaEnsaio.PORTARIA_155) classeR else null
+            val modelo = hidrometroRepository.getByNormaLetraClasse(serialNorma, letra, classeParaLookup)
+            update {
+                copy(
+                    norma = serialNorma,
+                    modeloSelecionado = modelo,
+                    modeloSelecionadoId = modelo?.id ?: 0L,
+                    capacidadeNaoCadastrada = modelo == null
+                )
+            }
             recalcularTudo()
         }
     }
@@ -535,6 +617,9 @@ class NovoEnsaioViewModel @Inject constructor(
                 if (s.tecnicoResponsavel.isBlank()) add("Técnico")
                 if (validarData(s.dataEnsaio) != null) add("Data")
                 if (!s.realizado && s.motivoNaoRealizado.isBlank()) add("Motivo")
+                if (s.norma == NormaEnsaio.PORTARIA_155 &&
+                    s.numeroHidrometro.isSerialHidrometroValido() && s.classeR == null
+                ) add("Classe do hidrômetro (R80/R100/R125)")
             }
             1 -> if (s.nominal.erroMedio == null) listOf("medições da ${s.norma.labelNominal}") else emptyList()
             2 -> if (s.transicao.erroMedio == null) listOf("medições da ${s.norma.labelTransicao}") else emptyList()
@@ -549,10 +634,20 @@ class NovoEnsaioViewModel @Inject constructor(
     private fun rotuloCampo(key: String) = when (key) {
         "numeroHidrometro" -> "Nº Hidrômetro"
         "cliente" -> "Cliente"
+        "nomeCompanhia" -> "Companhia"
+        "matricula" -> "Matrícula"
+        "endereco" -> "Endereço"
+        "bairro" -> "Bairro"
+        "cidade" -> "Cidade"
+        "idadeHidrometro" -> "Idade do Hidrômetro"
+        "temperaturaAgua" -> "Temp. Água"
+        "pressaoMedia" -> "Pressão Média"
         "tecnicoResponsavel" -> "Técnico"
         "dataEnsaio" -> "Data"
         "motivoNaoRealizado" -> "Motivo"
         "numeroSerieNovo" -> "Nº Série do Novo Hidrômetro"
+        "acompanhanteNome" -> "Nome do Cliente (acompanhamento)"
+        "classeR" -> "Classe do Hidrômetro"
         else -> key
     }
 
@@ -561,9 +656,10 @@ class NovoEnsaioViewModel @Inject constructor(
         val erros = validar(state)
         if (erros.isNotEmpty()) {
             val faltantes = erros.keys.joinToString(", ") { rotuloCampo(it) }
-            // Vai para a etapa onde estão os campos com problema: o nº de série do
-            // substituto fica no Resultado; os demais obrigatórios, no Cadastro
-            val passoDestino = if (erros.keys.all { it == "numeroSerieNovo" }) TOTAL_PASSOS - 1 else 0
+            // Vai para a etapa onde estão os campos com problema: nº de série do
+            // substituto e dados do acompanhante ficam no Resultado; o resto, no Cadastro
+            val camposDoResultado = setOf("numeroSerieNovo", "acompanhanteNome")
+            val passoDestino = if (erros.keys.all { it in camposDoResultado }) TOTAL_PASSOS - 1 else 0
             update {
                 copy(
                     validationErrors = erros,
@@ -574,8 +670,18 @@ class NovoEnsaioViewModel @Inject constructor(
             return
         }
 
-        // Exige um modelo selecionado (define o hidrometroModeloId)
-        if (state.modeloSelecionado == null) return
+        // Sem modelo resolvido (capacidade não cadastrada para a letra do serial) —
+        // não há como definir o hidrometroModeloId; avisa em vez de falhar em silêncio
+        if (state.modeloSelecionado == null) {
+            update {
+                copy(
+                    passoAtual = 0,
+                    mensagemAviso = "Não é possível salvar: capacidade do hidrômetro não cadastrada " +
+                        "(letra '${state.numeroHidrometro.firstOrNull() ?: '?'}'). Fale com o suporte."
+                )
+            }
+            return
+        }
 
         viewModelScope.launch {
             update { copy(isLoading = true, error = null) }
@@ -605,6 +711,11 @@ class NovoEnsaioViewModel @Inject constructor(
                 leituraFinalReprovado = state.leituraFinalReprovado,
                 numeroSerieNovo = state.numeroSerieNovo,
                 leituraInicialNovo = state.leituraInicialNovo,
+                clienteAcompanhou = state.clienteAcompanhou,
+                clienteRecusouDados = state.clienteRecusouDados,
+                acompanhanteNome = state.acompanhanteNome,
+                acompanhanteDocumento = state.acompanhanteDocumento,
+                acompanhanteTelefone = state.acompanhanteTelefone,
                 vazoes = if (state.realizado) buildVazoes(state) else emptyList(),
                 resultadoFinal = state.resultadoFinal
             )
@@ -658,13 +769,33 @@ class NovoEnsaioViewModel @Inject constructor(
         when {
             state.numeroHidrometro.isBlank() -> erros["numeroHidrometro"] = "Obrigatório"
             !state.numeroHidrometro.isSerialHidrometroValido() ->
-                erros["numeroHidrometro"] = "Formato inválido (ex.: A99A999999)"
+                erros["numeroHidrometro"] = "Formato inválido (ex.: A99A999999 ou A99AA9999999)"
         }
+        // Portaria 155 com letra conhecida ainda exige a classe R (define Q2/Q1)
+        if (state.norma == NormaEnsaio.PORTARIA_155 &&
+            state.numeroHidrometro.isSerialHidrometroValido() &&
+            state.classeR == null
+        ) {
+            erros["classeR"] = "Selecione a classe (R80/R100/R125)"
+        }
+        // Todos os campos do cadastro são obrigatórios
         if (state.cliente.isBlank()) erros["cliente"] = "Obrigatório"
+        if (state.nomeCompanhia.isBlank()) erros["nomeCompanhia"] = "Obrigatório"
+        if (state.matricula.isBlank()) erros["matricula"] = "Obrigatório"
+        if (state.endereco.isBlank()) erros["endereco"] = "Obrigatório"
+        if (state.bairro.isBlank()) erros["bairro"] = "Obrigatório"
+        if (state.cidade.isBlank()) erros["cidade"] = "Obrigatório"
+        if (state.idadeHidrometro.isBlank()) erros["idadeHidrometro"] = "Obrigatório"
         if (state.tecnicoResponsavel.isBlank()) erros["tecnicoResponsavel"] = "Obrigatório"
 
         val dataErro = validarData(state.dataEnsaio)
         if (dataErro != null) erros["dataEnsaio"] = dataErro
+
+        // Condições do ensaio só fazem sentido quando ele foi realizado
+        if (state.realizado) {
+            if (state.temperaturaAgua.isBlank()) erros["temperaturaAgua"] = "Obrigatório"
+            if (state.pressaoMedia.isBlank()) erros["pressaoMedia"] = "Obrigatório"
+        }
 
         // Ensaio não realizado exige motivo
         if (!state.realizado && state.motivoNaoRealizado.isBlank()) {
@@ -674,6 +805,11 @@ class NovoEnsaioViewModel @Inject constructor(
         // Nº de série do hidrômetro substituto (reprovado): se informado, deve estar completo
         if (state.numeroSerieNovo.isNotBlank() && !state.numeroSerieNovo.isSerialHidrometroValido()) {
             erros["numeroSerieNovo"] = "Formato inválido (ex.: A99A999999)"
+        }
+
+        // Cliente acompanhou e não recusou: nome do acompanhante é obrigatório
+        if (state.clienteAcompanhou && !state.clienteRecusouDados && state.acompanhanteNome.isBlank()) {
+            erros["acompanhanteNome"] = "Obrigatório (ou marque a recusa)"
         }
 
         return erros
@@ -712,9 +848,7 @@ class NovoEnsaioViewModel @Inject constructor(
             metodoEnsaio = sessao.metodoEnsaio,
             maletaNome = sessao.maleta.nome,
             erroPadrao = sessao.maleta.erroPadrao,
-            modelos = _uiState.value.modelos,
-            modeloSelecionadoId = _uiState.value.modelos.firstOrNull()?.id ?: 0L,
-            modeloSelecionado = _uiState.value.modelos.firstOrNull()
+            dataEnsaio = dataAtualDigits()
         )
     }
 
@@ -764,6 +898,11 @@ class NovoEnsaioViewModel @Inject constructor(
             leituraFinalReprovado = s.leituraFinalReprovado,
             numeroSerieNovo = s.numeroSerieNovo,
             leituraInicialNovo = s.leituraInicialNovo,
+            clienteAcompanhou = s.clienteAcompanhou,
+            clienteRecusouDados = s.clienteRecusouDados,
+            acompanhanteNome = s.acompanhanteNome,
+            acompanhanteDocumento = s.acompanhanteDocumento,
+            acompanhanteTelefone = s.acompanhanteTelefone,
             nominal = vaz(s.nominal),
             transicao = vaz(s.transicao),
             minima = vaz(s.minima)
@@ -789,7 +928,8 @@ class NovoEnsaioViewModel @Inject constructor(
                 endereco = r.endereco,
                 cidade = r.cidade,
                 bairro = r.bairro,
-                dataEnsaio = r.dataEnsaio,
+                // Rascunho antigo sem data → mantém a data atual pré-preenchida
+                dataEnsaio = r.dataEnsaio.ifBlank { dataEnsaio },
                 tecnicoResponsavel = r.tecnicoResponsavel,
                 idadeHidrometro = r.idadeHidrometro,
                 temperaturaAgua = r.temperaturaAgua,
@@ -802,6 +942,11 @@ class NovoEnsaioViewModel @Inject constructor(
                 leituraFinalReprovado = r.leituraFinalReprovado,
                 numeroSerieNovo = r.numeroSerieNovo,
                 leituraInicialNovo = r.leituraInicialNovo,
+                clienteAcompanhou = r.clienteAcompanhou,
+                clienteRecusouDados = r.clienteRecusouDados,
+                acompanhanteNome = r.acompanhanteNome,
+                acompanhanteDocumento = r.acompanhanteDocumento,
+                acompanhanteTelefone = r.acompanhanteTelefone,
                 nominal = vaz(r.nominal),
                 transicao = vaz(r.transicao),
                 minima = vaz(r.minima),
@@ -811,7 +956,7 @@ class NovoEnsaioViewModel @Inject constructor(
         // Resolve o objeto do modelo a partir do id e recalcula tudo
         viewModelScope.launch {
             val modelo = hidrometroRepository.getById(modeloId)
-            if (modelo != null) update { copy(modeloSelecionado = modelo) }
+            if (modelo != null) update { copy(modeloSelecionado = modelo, classeR = modelo.classeR) }
             recalcularTudo()
         }
     }
