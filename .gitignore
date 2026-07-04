@@ -52,3 +52,6 @@ google-services.json
 
 # Kotlin
 .kotlin/
+
+# Arquivos de contexto local da IDE (não versionar)
+/_contexto/

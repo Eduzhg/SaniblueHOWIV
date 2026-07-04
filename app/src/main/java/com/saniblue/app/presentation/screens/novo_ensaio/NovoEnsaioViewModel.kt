@@ -44,15 +44,38 @@ data class MedicaoState(
     // aprovação individual da medição (baseada nos limites da norma selecionada)
     val aprovado: Boolean? = null,
     // técnico já confirmou que a leitura com erro absurdo está correta
-    val altoErroConfirmado: Boolean = false
+    val altoErroConfirmado: Boolean = false,
+    // técnico já confirmou que a leitura inicial (menor que a final anterior) está correta
+    val leituraInicialConfirmada: Boolean = false
 )
 
-/** Pedido de confirmação de leitura suspeita (provável erro de digitação). */
+enum class TipoAlertaLeitura { ERRO_ALTO, LEITURA_RETROCEDIDA }
+
+/** Pedido de confirmação de leitura suspeita (provável erro de digitação ou hidrômetro "retrocedendo"). */
 data class AlertaLeitura(
     val tipo: TipoVazao,
     val indice: Int,
-    val erroPct: Double
+    val tipoAlerta: TipoAlertaLeitura,
+    val erroPct: Double = 0.0,
+    val leituraAnterior: Double = 0.0
 )
+
+/**
+ * Ordem sequencial de todas as medições do ensaio — o hidrômetro é o mesmo aparelho
+ * lido continuamente, então a leitura inicial de uma medição deve ser >= a leitura
+ * final da medição anterior nesta sequência (mesmo entre vazões diferentes).
+ */
+private val ORDEM_MEDICOES: List<Pair<TipoVazao, Int>> = listOf(
+    TipoVazao.NOMINAL to 1, TipoVazao.NOMINAL to 2, TipoVazao.NOMINAL to 3,
+    TipoVazao.TRANSICAO to 1, TipoVazao.TRANSICAO to 2, TipoVazao.TRANSICAO to 3,
+    TipoVazao.MINIMA to 1, TipoVazao.MINIMA to 2, TipoVazao.MINIMA to 3
+)
+
+/** Medição anterior na sequência, ou null se for a primeira (Nominal M1 — nada a comparar). */
+private fun medicaoAnterior(tipo: TipoVazao, indice: Int): Pair<TipoVazao, Int>? {
+    val pos = ORDEM_MEDICOES.indexOf(tipo to indice)
+    return if (pos <= 0) null else ORDEM_MEDICOES[pos - 1]
+}
 
 data class VazaoState(
     val m1: MedicaoState = MedicaoState(),
@@ -309,7 +332,8 @@ class NovoEnsaioViewModel @Inject constructor(
 
     // Dados de substituição (reprovado)
     fun updateLeituraFinalReprovado(v: String) = update { copy(leituraFinalReprovado = v.filtrarDecimal()) }
-    fun updateNumeroSerieNovo(v: String) = update { copy(numeroSerieNovo = v) }
+    // Mesmo formato do nº de série principal: Letra-NN-Letra-NNNNNN
+    fun updateNumeroSerieNovo(v: String) = update { copy(numeroSerieNovo = v.filtrarSerialHidrometro()) }
     fun updateLeituraInicialNovo(v: String) = update { copy(leituraInicialNovo = v.filtrarDecimal()) }
 
     // Alerta de leitura suspeita
@@ -317,7 +341,11 @@ class NovoEnsaioViewModel @Inject constructor(
         val alerta = _uiState.value.alertaLeitura ?: return
         update {
             val vs = vazao(alerta.tipo)
-            val m = vs.medicao(alerta.indice).copy(altoErroConfirmado = true)
+            val atual = vs.medicao(alerta.indice)
+            val m = when (alerta.tipoAlerta) {
+                TipoAlertaLeitura.ERRO_ALTO -> atual.copy(altoErroConfirmado = true)
+                TipoAlertaLeitura.LEITURA_RETROCEDIDA -> atual.copy(leituraInicialConfirmada = true)
+            }
             withVazao(alerta.tipo, vs.withMedicao(alerta.indice, m)).copy(alertaLeitura = null)
         }
     }
@@ -351,13 +379,14 @@ class NovoEnsaioViewModel @Inject constructor(
             val vs = vazao(tipo)
             val m = vs.medicao(indice)
             val novo = m.copy(
-                escoamento = escoamento?.filtrarDecimal() ?: m.escoamento,
-                leituraInicial = inicial?.filtrarDecimal() ?: m.leituraInicial,
-                leituraFinal = final?.filtrarDecimal() ?: m.leituraFinal,
-                padraoInicial = padraoInicial?.filtrarDecimal() ?: m.padraoInicial,
-                padraoFinal = padraoFinal?.filtrarDecimal() ?: m.padraoFinal,
-                // qualquer alteração reabilita a checagem de leitura suspeita
-                altoErroConfirmado = false
+                escoamento = escoamento?.filtrarDecimal(3) ?: m.escoamento,
+                leituraInicial = inicial?.filtrarDecimal(3) ?: m.leituraInicial,
+                leituraFinal = final?.filtrarDecimal(3) ?: m.leituraFinal,
+                padraoInicial = padraoInicial?.filtrarDecimal(3) ?: m.padraoInicial,
+                padraoFinal = padraoFinal?.filtrarDecimal(3) ?: m.padraoFinal,
+                // qualquer alteração reabilita as checagens de leitura suspeita
+                altoErroConfirmado = false,
+                leituraInicialConfirmada = false
             )
             withVazao(tipo, vs.withMedicao(indice, novo))
         }
@@ -405,7 +434,29 @@ class NovoEnsaioViewModel @Inject constructor(
         val m = _uiState.value.vazao(tipo).medicao(indice)
         val erro = m.erro
         if (erro != null && !m.altoErroConfirmado && kotlin.math.abs(erro) > LIMITE_ALERTA_ERRO) {
-            update { copy(alertaLeitura = AlertaLeitura(tipo, indice, erro)) }
+            update { copy(alertaLeitura = AlertaLeitura(tipo, indice, TipoAlertaLeitura.ERRO_ALTO, erroPct = erro)) }
+        }
+    }
+
+    /**
+     * Verifica se a leitura inicial desta medição é menor que a leitura final da medição
+     * anterior na sequência do ensaio (o hidrômetro é o mesmo aparelho, a leitura não
+     * retrocede). Chamado quando o campo perde o foco. Não se aplica à primeira medição
+     * (Nominal M1), que não tem leitura anterior para comparar.
+     */
+    fun verificarLeituraInicialSuspeita(tipo: TipoVazao, indice: Int) {
+        if (_uiState.value.alertaLeitura != null) return
+        val s = _uiState.value
+        val m = s.vazao(tipo).medicao(indice)
+        if (m.leituraInicialConfirmada) return
+        val (tipoAnt, indiceAnt) = medicaoAnterior(tipo, indice) ?: return
+        val anterior = s.vazao(tipoAnt).medicao(indiceAnt)
+        val atual = m.leituraInicial.toDoubleLocale() ?: return
+        val final = anterior.leituraFinal.toDoubleLocale() ?: return
+        if (atual < final) {
+            update {
+                copy(alertaLeitura = AlertaLeitura(tipo, indice, TipoAlertaLeitura.LEITURA_RETROCEDIDA, leituraAnterior = final))
+            }
         }
     }
 
@@ -501,6 +552,7 @@ class NovoEnsaioViewModel @Inject constructor(
         "tecnicoResponsavel" -> "Técnico"
         "dataEnsaio" -> "Data"
         "motivoNaoRealizado" -> "Motivo"
+        "numeroSerieNovo" -> "Nº Série do Novo Hidrômetro"
         else -> key
     }
 
@@ -509,12 +561,14 @@ class NovoEnsaioViewModel @Inject constructor(
         val erros = validar(state)
         if (erros.isNotEmpty()) {
             val faltantes = erros.keys.joinToString(", ") { rotuloCampo(it) }
-            // Volta para a etapa de cadastro (onde ficam os campos obrigatórios) e avisa
+            // Vai para a etapa onde estão os campos com problema: o nº de série do
+            // substituto fica no Resultado; os demais obrigatórios, no Cadastro
+            val passoDestino = if (erros.keys.all { it == "numeroSerieNovo" }) TOTAL_PASSOS - 1 else 0
             update {
                 copy(
                     validationErrors = erros,
-                    passoAtual = 0,
-                    mensagemAviso = "Preencha os campos obrigatórios: $faltantes"
+                    passoAtual = passoDestino,
+                    mensagemAviso = "Corrija os campos: $faltantes"
                 )
             }
             return
@@ -615,6 +669,11 @@ class NovoEnsaioViewModel @Inject constructor(
         // Ensaio não realizado exige motivo
         if (!state.realizado && state.motivoNaoRealizado.isBlank()) {
             erros["motivoNaoRealizado"] = "Selecione o motivo"
+        }
+
+        // Nº de série do hidrômetro substituto (reprovado): se informado, deve estar completo
+        if (state.numeroSerieNovo.isNotBlank() && !state.numeroSerieNovo.isSerialHidrometroValido()) {
+            erros["numeroSerieNovo"] = "Formato inválido (ex.: A99A999999)"
         }
 
         return erros

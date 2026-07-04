@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -163,17 +164,24 @@ fun NovoEnsaioScreen(
         }
     }
 
-    // Diálogo de confirmação de leitura suspeita (provável erro de digitação)
+    // Diálogo de confirmação de leitura suspeita (erro alto ou leitura "retrocedida")
     uiState.alertaLeitura?.let { alerta ->
         AlertDialog(
             onDismissRequest = { viewModel.descartarAlerta() },
             title = { Text("Confirmar leitura") },
             text = {
-                Text(
-                    "A medição ${alerta.indice} resultou em um erro de " +
-                        "${"%.3f".format(alerta.erroPct)}%, fora do esperado. " +
-                        "Confira se os valores digitados estão corretos."
-                )
+                when (alerta.tipoAlerta) {
+                    TipoAlertaLeitura.ERRO_ALTO -> Text(
+                        "A medição ${alerta.indice} resultou em um erro de " +
+                            "${"%.3f".format(alerta.erroPct)}%, fora do esperado. " +
+                            "Confira se os valores digitados estão corretos."
+                    )
+                    TipoAlertaLeitura.LEITURA_RETROCEDIDA -> Text(
+                        "A leitura inicial da medição ${alerta.indice} é menor que a leitura final " +
+                            "anterior (${"%.3f".format(alerta.leituraAnterior)}). O hidrômetro não retrocede — " +
+                            "confira se os valores digitados estão corretos."
+                    )
+                }
             },
             confirmButton = {
                 TextButton(onClick = { viewModel.confirmarAlerta() }) { Text("Está correto") }
@@ -269,6 +277,8 @@ private fun WizardBottomBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                // Mantém os botões acima da barra de navegação do sistema (edge-to-edge)
+                .navigationBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -634,60 +644,60 @@ private fun PassoVazao(tipo: TipoVazao, uiState: NovoEnsaioUiState, viewModel: N
                     modifier = Modifier.padding(12.dp)
                 )
             }
-            return@Column
-        }
+        } else {
+            // Card com a norma + limites + vazão de referência
+            Card(
+                colors = CardDefaults.cardColors(containerColor = SaniblueBlue.copy(alpha = 0.08f)),
+                elevation = CardDefaults.cardElevation(0.dp)
+            ) {
+                Column(Modifier.padding(12.dp)) {
+                    Text(
+                        text = "${uiState.modeloSelecionado?.nome ?: "Sem modelo"}  •  ${uiState.norma.label}",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = SaniblueBlue
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = buildString {
+                            append("Limite: ${uiState.norma.limiteLabel(tipo)}")
+                            if (vazaoRef != null) append("  •  Vazão: $vazaoRef L/h")
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
 
-        // Card com a norma + limites + vazão de referência
-        Card(
-            colors = CardDefaults.cardColors(containerColor = SaniblueBlue.copy(alpha = 0.08f)),
-            elevation = CardDefaults.cardElevation(0.dp)
-        ) {
-            Column(Modifier.padding(12.dp)) {
-                Text(
-                    text = "${uiState.modeloSelecionado?.nome ?: "Sem modelo"}  •  ${uiState.norma.label}",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = SaniblueBlue
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = buildString {
-                        append("Limite: ${uiState.norma.limiteLabel(tipo)}")
-                        if (vazaoRef != null) append("  •  Vazão: $vazaoRef L/h")
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+            listOf(1 to vazaoState.m1, 2 to vazaoState.m2, 3 to vazaoState.m3).forEach { (indice, m) ->
+                MedicaoInputRow(
+                    numero = indice,
+                    metodo = uiState.metodoEnsaio,
+                    escoamento = m.escoamento,
+                    leituraInicial = m.leituraInicial,
+                    leituraFinal = m.leituraFinal,
+                    padraoInicial = m.padraoInicial,
+                    padraoFinal = m.padraoFinal,
+                    erro = m.erro,
+                    aprovado = m.aprovado,
+                    erroPadrao = uiState.erroPadrao,
+                    onEscoamentoChange = { viewModel.updateMedicao(tipo, indice, escoamento = it) },
+                    onLeituraInicialChange = { viewModel.updateMedicao(tipo, indice, inicial = it) },
+                    onLeituraFinalChange = { viewModel.updateMedicao(tipo, indice, final = it) },
+                    onPadraoInicialChange = { viewModel.updateMedicao(tipo, indice, padraoInicial = it) },
+                    onPadraoFinalChange = { viewModel.updateMedicao(tipo, indice, padraoFinal = it) },
+                    onLeituraInicialBlur = { viewModel.verificarLeituraInicialSuspeita(tipo, indice) },
+                    onLeituraFinalBlur = { viewModel.verificarLeituraSuspeita(tipo, indice) }
                 )
             }
-        }
 
-        listOf(1 to vazaoState.m1, 2 to vazaoState.m2, 3 to vazaoState.m3).forEach { (indice, m) ->
-            MedicaoInputRow(
-                numero = indice,
-                metodo = uiState.metodoEnsaio,
-                escoamento = m.escoamento,
-                leituraInicial = m.leituraInicial,
-                leituraFinal = m.leituraFinal,
-                padraoInicial = m.padraoInicial,
-                padraoFinal = m.padraoFinal,
-                erro = m.erro,
-                aprovado = m.aprovado,
-                erroPadrao = uiState.erroPadrao,
-                onEscoamentoChange = { viewModel.updateMedicao(tipo, indice, escoamento = it) },
-                onLeituraInicialChange = { viewModel.updateMedicao(tipo, indice, inicial = it) },
-                onLeituraFinalChange = { viewModel.updateMedicao(tipo, indice, final = it) },
-                onPadraoInicialChange = { viewModel.updateMedicao(tipo, indice, padraoInicial = it) },
-                onPadraoFinalChange = { viewModel.updateMedicao(tipo, indice, padraoFinal = it) },
-                onLeituraFinalBlur = { viewModel.verificarLeituraSuspeita(tipo, indice) }
-            )
-        }
-
-        vazaoState.erroMedio?.let { medio ->
-            ResultadoVazaoCard(
-                erroMedio = medio,
-                aprovado = vazaoState.aprovado ?: false,
-                label = titulo
-            )
+            vazaoState.erroMedio?.let { medio ->
+                ResultadoVazaoCard(
+                    erroMedio = medio,
+                    aprovado = vazaoState.aprovado ?: false,
+                    label = titulo
+                )
+            }
         }
 
         Spacer(Modifier.height(8.dp))
@@ -731,6 +741,15 @@ private fun PassoResultado(uiState: NovoEnsaioUiState, viewModel: NovoEnsaioView
                 value = uiState.numeroSerieNovo,
                 onValueChange = viewModel::updateNumeroSerieNovo,
                 label = { Text("Nº de Série do Novo Hidrômetro") },
+                placeholder = { Text("A99A999999") },
+                isError = uiState.validationErrors.containsKey("numeroSerieNovo"),
+                supportingText = {
+                    Text(
+                        uiState.validationErrors["numeroSerieNovo"] ?: "Letra, 2 nº, letra, 6 nº",
+                        color = if (uiState.validationErrors.containsKey("numeroSerieNovo"))
+                            MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )

@@ -42,6 +42,7 @@ fun MedicaoInputRow(
     onLeituraFinalChange: (String) -> Unit,
     onPadraoInicialChange: (String) -> Unit,
     onPadraoFinalChange: (String) -> Unit,
+    onLeituraInicialBlur: () -> Unit = {},
     onLeituraFinalBlur: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -122,7 +123,7 @@ fun MedicaoInputRow(
                         label = { Text("Leit. Inicial", style = MaterialTheme.typography.labelSmall) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).aoSairDoCampo(onLeituraInicialBlur),
                         textStyle = MaterialTheme.typography.bodyMedium
                     )
                     OutlinedTextField(
@@ -156,7 +157,7 @@ fun MedicaoInputRow(
                         label = { Text("Leit. Inicial", style = MaterialTheme.typography.labelSmall) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).aoSairDoCampo(onLeituraInicialBlur),
                         textStyle = MaterialTheme.typography.bodyMedium
                     )
                     OutlinedTextField(
