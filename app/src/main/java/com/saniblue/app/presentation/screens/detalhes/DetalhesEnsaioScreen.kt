@@ -51,7 +51,6 @@ import com.saniblue.app.domain.model.VazaoEnsaio
 import com.saniblue.app.presentation.components.ErroChip
 import com.saniblue.app.presentation.components.InfoRow
 import com.saniblue.app.presentation.components.LoadingContent
-import com.saniblue.app.presentation.components.ResultadoBadge
 import com.saniblue.app.presentation.components.SectionHeader
 import com.saniblue.app.presentation.theme.SaniblueBlue
 
@@ -130,17 +129,10 @@ fun DetalhesEnsaioScreen(
                         modifier = Modifier.fillMaxWidth(),
                         elevation = CardDefaults.cardElevation(4.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text(text = "Nº ${ensaio.numeroHidrometro}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                                Text(text = ensaio.cliente, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text(text = ensaio.dataEnsaio, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                            ResultadoBadge(resultado = ensaio.resultadoFinal, large = true)
+                        Column(Modifier.padding(16.dp)) {
+                            Text(text = "Nº ${ensaio.numeroHidrometro}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                            Text(text = ensaio.cliente, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(text = ensaio.dataEnsaio, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
 
@@ -162,7 +154,6 @@ fun DetalhesEnsaioScreen(
                             InfoRow("Técnico", ensaio.tecnicoResponsavel)
                             InfoRow("Data", ensaio.dataEnsaio)
                             InfoRow("Idade", ensaio.idadeHidrometro.ifBlank { "-" })
-                            InfoRow("Temp. Água", "${ensaio.temperaturaAgua}°C".ifBlank { "-" })
                             InfoRow("Pressão Média", ensaio.pressaoMedia.let { if (it.isBlank()) "-" else "$it mca" })
                             InfoRow("Norma", ensaio.norma.descricao)
                             InfoRow("Método", ensaio.metodoEnsaio.label)

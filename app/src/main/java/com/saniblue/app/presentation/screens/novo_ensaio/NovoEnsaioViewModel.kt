@@ -100,7 +100,6 @@ data class NovoEnsaioUiState(
     val dataEnsaio: String = "",
     val tecnicoResponsavel: String = "",
     val idadeHidrometro: String = "",
-    val temperaturaAgua: String = "",
     val observacoes: String = "",
 
     // Norma (selecionável no ensaio) e método/maleta (vêm do login — só leitura)
@@ -252,7 +251,6 @@ class NovoEnsaioViewModel @Inject constructor(
                 dataEnsaio = ensaio.dataEnsaio.filter { it.isDigit() },
                 tecnicoResponsavel = ensaio.tecnicoResponsavel,
                 idadeHidrometro = ensaio.idadeHidrometro,
-                temperaturaAgua = ensaio.temperaturaAgua,
                 observacoes = ensaio.observacoes,
                 norma = ensaio.norma,
                 metodoEnsaio = ensaio.metodoEnsaio,
@@ -337,7 +335,6 @@ class NovoEnsaioViewModel @Inject constructor(
     }
     fun updateTecnico(v: String) = update { copy(tecnicoResponsavel = v) }
     fun updateIdadeHidrometro(v: String) = update { copy(idadeHidrometro = v) }
-    fun updateTemperaturaAgua(v: String) = update { copy(temperaturaAgua = v.filtrarDecimal()) }
     fun updateObservacoes(v: String) = update { copy(observacoes = v) }
     fun updatePressaoMedia(v: String) = update { copy(pressaoMedia = v.filtrarDecimal()) }
 
@@ -640,7 +637,6 @@ class NovoEnsaioViewModel @Inject constructor(
         "bairro" -> "Bairro"
         "cidade" -> "Cidade"
         "idadeHidrometro" -> "Idade do Hidrômetro"
-        "temperaturaAgua" -> "Temp. Água"
         "pressaoMedia" -> "Pressão Média"
         "tecnicoResponsavel" -> "Técnico"
         "dataEnsaio" -> "Data"
@@ -699,7 +695,6 @@ class NovoEnsaioViewModel @Inject constructor(
                 dataEnsaio = formatarData(state.dataEnsaio),
                 tecnicoResponsavel = state.tecnicoResponsavel,
                 idadeHidrometro = state.idadeHidrometro,
-                temperaturaAgua = state.temperaturaAgua,
                 observacoes = state.observacoes,
                 norma = state.norma,
                 metodoEnsaio = state.metodoEnsaio,
@@ -793,7 +788,6 @@ class NovoEnsaioViewModel @Inject constructor(
 
         // Condições do ensaio só fazem sentido quando ele foi realizado
         if (state.realizado) {
-            if (state.temperaturaAgua.isBlank()) erros["temperaturaAgua"] = "Obrigatório"
             if (state.pressaoMedia.isBlank()) erros["pressaoMedia"] = "Obrigatório"
         }
 
@@ -888,7 +882,6 @@ class NovoEnsaioViewModel @Inject constructor(
             dataEnsaio = s.dataEnsaio,
             tecnicoResponsavel = s.tecnicoResponsavel,
             idadeHidrometro = s.idadeHidrometro,
-            temperaturaAgua = s.temperaturaAgua,
             pressaoMedia = s.pressaoMedia,
             observacoes = s.observacoes,
             norma = s.norma.name,
@@ -932,7 +925,6 @@ class NovoEnsaioViewModel @Inject constructor(
                 dataEnsaio = r.dataEnsaio.ifBlank { dataEnsaio },
                 tecnicoResponsavel = r.tecnicoResponsavel,
                 idadeHidrometro = r.idadeHidrometro,
-                temperaturaAgua = r.temperaturaAgua,
                 pressaoMedia = r.pressaoMedia,
                 observacoes = r.observacoes,
                 norma = runCatching { NormaEnsaio.valueOf(r.norma) }.getOrDefault(norma),

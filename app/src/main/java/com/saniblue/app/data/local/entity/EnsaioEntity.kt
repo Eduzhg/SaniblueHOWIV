@@ -41,7 +41,6 @@ data class EnsaioEntity(
     @ColumnInfo("data_ensaio") val dataEnsaio: String,
     @ColumnInfo("tecnico_responsavel") val tecnicoResponsavel: String,
     @ColumnInfo("idade_hidrometro") val idadeHidrometro: String = "",
-    @ColumnInfo("temperatura_agua") val temperaturaAgua: String = "",
     @ColumnInfo("observacoes") val observacoes: String = "",
 
     // Nome da companhia de saneamento (ex.: "Samae - Blumenau (SC)")

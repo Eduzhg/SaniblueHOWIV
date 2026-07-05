@@ -18,7 +18,6 @@ data class RascunhoEnsaio(
     val dataEnsaio: String = "",
     val tecnicoResponsavel: String = "",
     val idadeHidrometro: String = "",
-    val temperaturaAgua: String = "",
     val pressaoMedia: String = "",
     val observacoes: String = "",
     val norma: String = "",
@@ -66,7 +65,6 @@ object RascunhoEnsaioSerializer {
         put("dataEnsaio", r.dataEnsaio)
         put("tecnico", r.tecnicoResponsavel)
         put("idade", r.idadeHidrometro)
-        put("temperatura", r.temperaturaAgua)
         put("pressao", r.pressaoMedia)
         put("observacoes", r.observacoes)
         put("norma", r.norma)
@@ -99,7 +97,6 @@ object RascunhoEnsaioSerializer {
             dataEnsaio = o.optString("dataEnsaio"),
             tecnicoResponsavel = o.optString("tecnico"),
             idadeHidrometro = o.optString("idade"),
-            temperaturaAgua = o.optString("temperatura"),
             pressaoMedia = o.optString("pressao"),
             observacoes = o.optString("observacoes"),
             norma = o.optString("norma"),

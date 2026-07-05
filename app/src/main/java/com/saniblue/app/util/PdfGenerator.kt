@@ -4,7 +4,6 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.RectF
 import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
 import android.os.Environment
@@ -141,12 +140,9 @@ class PdfGenerator @Inject constructor(private val context: Context) {
             "Cidade"        to ensaio.cidade.ifBlank { "-" },
             "Idade do Hidrômetro" to ensaio.idadeHidrometro.ifBlank { "-" },
             "Data do Ensaio" to ensaio.dataEnsaio,
-            "Temperatura da Água" to ensaio.temperaturaAgua.let { if (it.isBlank()) "-" else "$it °C" },
             "Pressão Média" to ensaio.pressaoMedia.let { if (it.isBlank()) "-" else "$it mca" },
             "Norma"         to ensaio.norma.descricao,
-            "Método de Ensaio" to ensaio.metodoEnsaio.label,
-            "Maleta"        to ensaio.maletaNome.ifBlank { "-" },
-            "Erro Padrão"   to "${ensaio.erroPadrao}%"
+            "Método de Ensaio" to ensaio.metodoEnsaio.label
         )
 
         pares.chunked(2).forEach { par ->
@@ -311,26 +307,29 @@ class PdfGenerator @Inject constructor(private val context: Context) {
     // ─────────────────────────────────────────────────────────────────
 
     private fun drawResultadoFinal(resultado: ResultadoFinal) {
-        checkSpace(60f)
-        y += 8f
+        checkSpace(46f)
+        y += 4f
 
-        val (bg, fg, texto) = when (resultado) {
-            ResultadoFinal.APROVADO  -> Triple(C_VERDE_BG, C_VERDE, "✓   APROVADO")
-            ResultadoFinal.REPROVADO -> Triple(C_VERM_BG,  C_VERM,  "✗   REPROVADO")
-            ResultadoFinal.PENDENTE  -> Triple(Color.rgb(255, 224, 178), Color.rgb(200, 80, 0), "⚠   PENDENTE")
-            ResultadoFinal.NAO_REALIZADO -> Triple(Color.rgb(224, 224, 224), Color.rgb(90, 90, 90), "ENSAIO NÃO REALIZADO")
+        val texto = when (resultado) {
+            ResultadoFinal.APROVADO      -> "APROVADO"
+            ResultadoFinal.REPROVADO     -> "REPROVADO"
+            ResultadoFinal.PENDENTE      -> "PENDENTE"
+            ResultadoFinal.NAO_REALIZADO -> "ENSAIO NÃO REALIZADO"
         }
 
-        // Barra lateral colorida
-        canvas.drawRect(ML, y, ML + 5f, y + 50f, fillPaint(fg))
-        canvas.drawRect(ML + 5f, y, PW - ML, y + 50f, fillPaint(bg))
+        val bgNeutro    = Color.rgb(244, 244, 244)
+        val stripeColor = Color.rgb(51, 51, 51)
+        val textColor   = Color.rgb(17, 17, 17)
+
+        canvas.drawRect(ML, y, ML + 5f, y + 38f, fillPaint(stripeColor))
+        canvas.drawRect(ML + 5f, y, PW - ML, y + 38f, fillPaint(bgNeutro))
 
         canvas.drawText("RESULTADO FINAL DO ENSAIO METROLÓGICO",
-            ML + 12f, y + 16f, textPaint(fg, 8.5f))
+            ML + 12f, y + 11f, textPaint(Color.rgb(100, 100, 100), 8.5f))
         canvas.drawText(texto,
-            ML + 12f, y + 40f, textPaint(fg, 18f, bold = true))
+            ML + 12f, y + 30f, textPaint(textColor, 18f, bold = true))
 
-        y += 56f
+        y += 44f
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -341,14 +340,12 @@ class PdfGenerator @Inject constructor(private val context: Context) {
         y += 8f
         checkSpace(60f)
 
-        val bg = Color.rgb(224, 224, 224)
-        val fg = Color.rgb(90, 90, 90)
-        canvas.drawRect(ML, y, ML + 5f, y + 50f, fillPaint(fg))
-        canvas.drawRect(ML + 5f, y, PW - ML, y + 50f, fillPaint(bg))
+        canvas.drawRect(ML, y, ML + 5f, y + 50f, fillPaint(Color.rgb(51, 51, 51)))
+        canvas.drawRect(ML + 5f, y, PW - ML, y + 50f, fillPaint(Color.rgb(244, 244, 244)))
         canvas.drawText("RESULTADO DO ENSAIO",
-            ML + 12f, y + 16f, textPaint(fg, 8.5f))
+            ML + 12f, y + 16f, textPaint(Color.rgb(100, 100, 100), 8.5f))
         canvas.drawText("ENSAIO NÃO REALIZADO",
-            ML + 12f, y + 40f, textPaint(fg, 16f, bold = true))
+            ML + 12f, y + 40f, textPaint(Color.rgb(17, 17, 17), 16f, bold = true))
         y += 56f
 
         drawTitulo("MOTIVO")
@@ -461,17 +458,6 @@ class PdfGenerator @Inject constructor(private val context: Context) {
             PW - ML, ry + 9f,
             textPaint(Color.GRAY, 7.5f, align = Paint.Align.RIGHT))
 
-        // QR Code
-        try {
-            val qr  = QrCodeGenerator()
-            val url = qr.gerarUrlValidacao(ensaio.id, ensaio.numeroHidrometro)
-            val bmp = qr.gerar(url, 68)
-            val qx  = PW - ML - 68f
-            val qy  = ry - 76f
-            canvas.drawBitmap(bmp, null, RectF(qx, qy, qx + 68f, qy + 68f), null)
-            canvas.drawText("QR Validação", qx + 34f, qy + 80f,
-                textPaint(Color.GRAY, 6.5f, align = Paint.Align.CENTER))
-        } catch (_: Exception) { }
     }
 
     // ─────────────────────────────────────────────────────────────────

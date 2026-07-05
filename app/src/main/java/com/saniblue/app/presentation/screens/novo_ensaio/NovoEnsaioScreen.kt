@@ -513,31 +513,20 @@ private fun PassoCadastro(uiState: NovoEnsaioUiState, viewModel: NovoEnsaioViewM
         // === DADOS DO ENSAIO ===
         SectionHeader(title = "Dados do Ensaio")
 
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(
-                value = uiState.dataEnsaio,
-                onValueChange = viewModel::updateDataEnsaio,
-                label = { Text("Data *") },
-                isError = uiState.validationErrors.containsKey("dataEnsaio"),
-                modifier = Modifier.weight(1f),
-                singleLine = true,
-                placeholder = { Text("DD/MM/AAAA") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                visualTransformation = DateVisualTransformation(),
-                supportingText = uiState.validationErrors["dataEnsaio"]?.let {
-                    { Text(it, color = MaterialTheme.colorScheme.error) }
-                }
-            )
-            OutlinedTextField(
-                value = uiState.temperaturaAgua,
-                onValueChange = viewModel::updateTemperaturaAgua,
-                label = { Text("Temp. Água (°C) *") },
-                isError = uiState.validationErrors.containsKey("temperaturaAgua"),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier.weight(1f),
-                singleLine = true
-            )
-        }
+        OutlinedTextField(
+            value = uiState.dataEnsaio,
+            onValueChange = viewModel::updateDataEnsaio,
+            label = { Text("Data *") },
+            isError = uiState.validationErrors.containsKey("dataEnsaio"),
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            placeholder = { Text("DD/MM/AAAA") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            visualTransformation = DateVisualTransformation(),
+            supportingText = uiState.validationErrors["dataEnsaio"]?.let {
+                { Text(it, color = MaterialTheme.colorScheme.error) }
+            }
+        )
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(

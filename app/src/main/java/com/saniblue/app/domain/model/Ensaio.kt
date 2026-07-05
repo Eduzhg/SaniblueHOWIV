@@ -12,7 +12,6 @@ data class Ensaio(
     val dataEnsaio: String,
     val tecnicoResponsavel: String,
     val idadeHidrometro: String = "",
-    val temperaturaAgua: String = "",
     val observacoes: String = "",
     // Nome da companhia de saneamento (ex.: "Samae - Blumenau (SC)")
     val nomeCompanhia: String = "",

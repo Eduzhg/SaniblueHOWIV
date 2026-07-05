@@ -1,12 +1,12 @@
 [versions]
-agp = "8.3.0"
-kotlin = "1.9.22"
-ksp = "1.9.22-1.0.17"
-composeBom = "2024.02.00"
-composeCompiler = "1.5.8"
-hilt = "2.50"
+agp = "9.2.1"
+kotlin = "2.2.0"
+ksp = "2.2.0-2.0.2"
+composeBom = "2024.09.00"
+composeCompiler = "1.5.14"
+hilt = "2.60"
 hiltNavigationCompose = "1.1.0"
-room = "2.6.1"
+room = "2.8.4"
 navigation = "2.7.7"
 lifecycle = "2.7.0"
 activityCompose = "1.8.2"
@@ -79,3 +79,4 @@ android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 hilt-android = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
