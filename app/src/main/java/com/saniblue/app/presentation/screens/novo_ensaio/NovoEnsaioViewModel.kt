@@ -1,5 +1,6 @@
 package com.saniblue.app.presentation.screens.novo_ensaio
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.saniblue.app.domain.model.ClasseHidrometro
@@ -26,9 +27,13 @@ import com.saniblue.app.util.isLetraCapacidadeConhecida
 import com.saniblue.app.util.isSerialHidrometroValido
 import com.saniblue.app.util.normaDoSerial
 import com.saniblue.app.util.toDoubleLocale
+import com.saniblue.app.util.FotoEnsaioHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
@@ -114,6 +119,9 @@ data class NovoEnsaioUiState(
     // Ensaio não realizado
     val realizado: Boolean = true,
     val motivoNaoRealizado: String = "",
+    // Foto do local (não realizado): URI temporária em memória + path permanente após salvar
+    val fotoTempUri: String = "",
+    val fotoPath: String = "",
 
     // Alerta de leitura suspeita
     val alertaLeitura: AlertaLeitura? = null,
@@ -170,6 +178,7 @@ const val TOTAL_PASSOS = 5
 @OptIn(FlowPreview::class)
 @HiltViewModel
 class NovoEnsaioViewModel @Inject constructor(
+    @ApplicationContext private val appContext: Context,
     private val saveEnsaio: SaveEnsaioUseCase,
     private val ensaioRepository: EnsaioRepository,
     private val hidrometroRepository: HidrometroRepository,
@@ -273,7 +282,8 @@ class NovoEnsaioViewModel @Inject constructor(
                 clienteRecusouDados = ensaio.clienteRecusouDados,
                 acompanhanteNome = ensaio.acompanhanteNome,
                 acompanhanteDocumento = ensaio.acompanhanteDocumento,
-                acompanhanteTelefone = ensaio.acompanhanteTelefone
+                acompanhanteTelefone = ensaio.acompanhanteTelefone,
+                fotoPath = ensaio.fotoPath
             )
             // Recalcular aprovações individuais após carregar os dados
             recalcularTudo()
@@ -344,6 +354,30 @@ class NovoEnsaioViewModel @Inject constructor(
         atualizarResultadoFinal()
     }
     fun updateMotivoNaoRealizado(v: String) = update { copy(motivoNaoRealizado = v) }
+
+    /** Chamado pela câmera após captura bem-sucedida para exibir preview. */
+    fun setFotoTemp(uri: String) = update { copy(fotoTempUri = uri) }
+
+    /** Descarta a foto temporária (usuário quer tirar outra). */
+    fun descartarFotoTemp() = update { copy(fotoTempUri = "") }
+
+    /**
+     * Resolve o path definitivo da foto ao salvar:
+     * - se já tem path permanente (ensaio editado), mantém
+     * - se tem URI temp nova, salva na galeria agora
+     */
+    private fun resolverFotoPath(state: NovoEnsaioUiState): String {
+        if (state.fotoPath.isNotBlank()) return state.fotoPath
+        if (state.fotoTempUri.isBlank()) return ""
+        val tempFile = FotoEnsaioHelper.obterArquivoTemp(appContext)
+        if (!tempFile.exists() || tempFile.length() == 0L) return ""
+        return FotoEnsaioHelper.salvarFoto(
+            appContext,
+            tempFile,
+            state.numeroHidrometro,
+            state.dataEnsaio.ifBlank { "sem_data" }
+        )
+    }
 
     // Dados de substituição (reprovado)
     fun updateLeituraFinalReprovado(v: String) = update { copy(leituraFinalReprovado = v.filtrarDecimal()) }
@@ -682,6 +716,11 @@ class NovoEnsaioViewModel @Inject constructor(
         viewModelScope.launch {
             update { copy(isLoading = true, error = null) }
 
+            // IO thread: copia a foto temporária para a galeria antes de montar o Ensaio
+            val fotoPath = if (!state.realizado) {
+                withContext(Dispatchers.IO) { resolverFotoPath(state) }
+            } else ""
+
             val ensaio = Ensaio(
                 id = ensaioId,
                 hidrometroModeloId = state.modeloSelecionadoId,
@@ -703,6 +742,7 @@ class NovoEnsaioViewModel @Inject constructor(
                 pressaoMedia = state.pressaoMedia,
                 realizado = state.realizado,
                 motivoNaoRealizado = if (state.realizado) "" else state.motivoNaoRealizado,
+                fotoPath = fotoPath,
                 leituraFinalReprovado = state.leituraFinalReprovado,
                 numeroSerieNovo = state.numeroSerieNovo,
                 leituraInicialNovo = state.leituraInicialNovo,

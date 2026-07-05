@@ -108,6 +108,9 @@ dependencies {
     // DataStore
     implementation(libs.datastore.preferences)
 
+    // Coil — carregamento de imagens (foto do ensaio não realizado)
+    implementation(libs.coil.compose)
+
     // Debug
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)

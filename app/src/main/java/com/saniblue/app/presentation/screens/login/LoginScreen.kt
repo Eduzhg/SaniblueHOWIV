@@ -1,5 +1,6 @@
 package com.saniblue.app.presentation.screens.login
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,7 +25,6 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -50,7 +50,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -60,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.saniblue.app.BuildConfig
+import com.saniblue.app.R
 import com.saniblue.app.domain.model.MetodoEnsaio
 import com.saniblue.app.presentation.theme.SaniblueBlue
 import com.saniblue.app.presentation.theme.SaniblueBlueDark
@@ -98,15 +101,15 @@ fun LoginScreen(
             // Logo
             Box(
                 modifier = Modifier
-                    .size(88.dp)
-                    .background(Color.White.copy(alpha = 0.2f), CircleShape),
+                    .size(104.dp)
+                    .background(Color.White, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.WaterDrop,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(52.dp)
+                Image(
+                    painter = painterResource(R.drawable.logo_saniblue),
+                    contentDescription = "Logo Saniblue",
+                    modifier = Modifier.size(72.dp),
+                    contentScale = ContentScale.Fit
                 )
             }
 

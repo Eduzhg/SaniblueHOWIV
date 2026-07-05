@@ -37,6 +37,8 @@ data class Ensaio(
     val acompanhanteNome: String = "",
     val acompanhanteDocumento: String = "",
     val acompanhanteTelefone: String = "",
+    // Foto do local (apenas ensaios não realizados) — URI content:// ou caminho absoluto
+    val fotoPath: String = "",
     val vazoes: List<VazaoEnsaio> = emptyList(),
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()

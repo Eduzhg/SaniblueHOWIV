@@ -9,6 +9,7 @@ import com.saniblue.app.domain.repository.EnsaioRepository
 import com.saniblue.app.domain.repository.HidrometroRepository
 import com.saniblue.app.util.PdfGenerator
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -51,7 +52,7 @@ class DetalhesEnsaioViewModel @Inject constructor(
     fun gerarPdf(context: Context) {
         val ensaio = _uiState.value.ensaio ?: return
         val modelo = _uiState.value.modelo ?: return
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = _uiState.value.copy(isGeneratingPdf = true)
             try {
                 val file = pdfGenerator.gerarLaudo(context, ensaio, modelo)

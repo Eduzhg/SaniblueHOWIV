@@ -1,0 +1,588 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 8,
+    "identityHash": "f615fd33877a193f5a12edf8d0eebc33",
+    "entities": [
+      {
+        "tableName": "usuarios",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `nome` TEXT NOT NULL, `login` TEXT NOT NULL, `senha_hash` TEXT NOT NULL, `cargo` TEXT NOT NULL, `email` TEXT NOT NULL, `ativo` INTEGER NOT NULL, `created_at` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nome",
+            "columnName": "nome",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "login",
+            "columnName": "login",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "senhaHash",
+            "columnName": "senha_hash",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cargo",
+            "columnName": "cargo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "email",
+            "columnName": "email",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ativo",
+            "columnName": "ativo",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_usuarios_login",
+            "unique": true,
+            "columnNames": [
+              "login"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_usuarios_login` ON `${TABLE_NAME}` (`login`)"
+          }
+        ]
+      },
+      {
+        "tableName": "hidrometro_modelos",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `nome` TEXT NOT NULL, `descricao` TEXT NOT NULL, `norma` TEXT NOT NULL, `letra` TEXT NOT NULL, `classe_r` TEXT NOT NULL, `vazao_nominal` REAL NOT NULL, `vazao_transicao` REAL NOT NULL, `vazao_minima` REAL NOT NULL, `ativo` INTEGER NOT NULL, `created_at` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nome",
+            "columnName": "nome",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "descricao",
+            "columnName": "descricao",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "norma",
+            "columnName": "norma",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "letra",
+            "columnName": "letra",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "classeR",
+            "columnName": "classe_r",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "vazaoNominal",
+            "columnName": "vazao_nominal",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "vazaoTransicao",
+            "columnName": "vazao_transicao",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "vazaoMinima",
+            "columnName": "vazao_minima",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ativo",
+            "columnName": "ativo",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "ensaios",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `hidrometro_modelo_id` INTEGER NOT NULL, `numero_hidrometro` TEXT NOT NULL, `cliente` TEXT NOT NULL, `matricula` TEXT NOT NULL, `endereco` TEXT NOT NULL, `cidade` TEXT NOT NULL, `bairro` TEXT NOT NULL, `data_ensaio` TEXT NOT NULL, `tecnico_responsavel` TEXT NOT NULL, `idade_hidrometro` TEXT NOT NULL, `observacoes` TEXT NOT NULL, `nome_companhia` TEXT NOT NULL, `norma` TEXT NOT NULL, `metodo_ensaio` TEXT NOT NULL, `maleta_nome` TEXT NOT NULL, `erro_padrao` REAL NOT NULL, `pressao_media` TEXT NOT NULL, `realizado` INTEGER NOT NULL, `motivo_nao_realizado` TEXT NOT NULL, `leitura_final_reprovado` TEXT NOT NULL, `numero_serie_novo` TEXT NOT NULL, `leitura_inicial_novo` TEXT NOT NULL, `foto_path` TEXT NOT NULL, `cliente_acompanhou` INTEGER NOT NULL, `cliente_recusou_dados` INTEGER NOT NULL, `acompanhante_nome` TEXT NOT NULL, `acompanhante_documento` TEXT NOT NULL, `acompanhante_telefone` TEXT NOT NULL, `resultado_final` TEXT NOT NULL, `sync_status` TEXT NOT NULL, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, FOREIGN KEY(`hidrometro_modelo_id`) REFERENCES `hidrometro_modelos`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hidrometroModeloId",
+            "columnName": "hidrometro_modelo_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "numeroHidrometro",
+            "columnName": "numero_hidrometro",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cliente",
+            "columnName": "cliente",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "matricula",
+            "columnName": "matricula",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endereco",
+            "columnName": "endereco",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cidade",
+            "columnName": "cidade",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bairro",
+            "columnName": "bairro",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dataEnsaio",
+            "columnName": "data_ensaio",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tecnicoResponsavel",
+            "columnName": "tecnico_responsavel",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "idadeHidrometro",
+            "columnName": "idade_hidrometro",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "observacoes",
+            "columnName": "observacoes",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nomeCompanhia",
+            "columnName": "nome_companhia",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "norma",
+            "columnName": "norma",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "metodoEnsaio",
+            "columnName": "metodo_ensaio",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "maletaNome",
+            "columnName": "maleta_nome",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "erroPadrao",
+            "columnName": "erro_padrao",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pressaoMedia",
+            "columnName": "pressao_media",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "realizado",
+            "columnName": "realizado",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "motivoNaoRealizado",
+            "columnName": "motivo_nao_realizado",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "leituraFinalReprovado",
+            "columnName": "leitura_final_reprovado",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "numeroSerieNovo",
+            "columnName": "numero_serie_novo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "leituraInicialNovo",
+            "columnName": "leitura_inicial_novo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fotoPath",
+            "columnName": "foto_path",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "clienteAcompanhou",
+            "columnName": "cliente_acompanhou",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "clienteRecusouDados",
+            "columnName": "cliente_recusou_dados",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "acompanhanteNome",
+            "columnName": "acompanhante_nome",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "acompanhanteDocumento",
+            "columnName": "acompanhante_documento",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "acompanhanteTelefone",
+            "columnName": "acompanhante_telefone",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "resultadoFinal",
+            "columnName": "resultado_final",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "syncStatus",
+            "columnName": "sync_status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_ensaios_hidrometro_modelo_id",
+            "unique": false,
+            "columnNames": [
+              "hidrometro_modelo_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_ensaios_hidrometro_modelo_id` ON `${TABLE_NAME}` (`hidrometro_modelo_id`)"
+          },
+          {
+            "name": "index_ensaios_numero_hidrometro",
+            "unique": false,
+            "columnNames": [
+              "numero_hidrometro"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_ensaios_numero_hidrometro` ON `${TABLE_NAME}` (`numero_hidrometro`)"
+          },
+          {
+            "name": "index_ensaios_data_ensaio",
+            "unique": false,
+            "columnNames": [
+              "data_ensaio"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_ensaios_data_ensaio` ON `${TABLE_NAME}` (`data_ensaio`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "hidrometro_modelos",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "hidrometro_modelo_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "vazao_ensaios",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `ensaio_id` INTEGER NOT NULL, `tipo_vazao` TEXT NOT NULL, `m1_escoamento` REAL NOT NULL, `m1_leitura_inicial` REAL NOT NULL, `m1_leitura_final` REAL NOT NULL, `m2_escoamento` REAL NOT NULL, `m2_leitura_inicial` REAL NOT NULL, `m2_leitura_final` REAL NOT NULL, `m3_escoamento` REAL NOT NULL, `m3_leitura_inicial` REAL NOT NULL, `m3_leitura_final` REAL NOT NULL, `m1_padrao_inicial` REAL NOT NULL, `m1_padrao_final` REAL NOT NULL, `m2_padrao_inicial` REAL NOT NULL, `m2_padrao_final` REAL NOT NULL, `m3_padrao_inicial` REAL NOT NULL, `m3_padrao_final` REAL NOT NULL, `erro_1` REAL NOT NULL, `erro_2` REAL NOT NULL, `erro_3` REAL NOT NULL, `erro_medio` REAL NOT NULL, `aprovado` INTEGER NOT NULL, FOREIGN KEY(`ensaio_id`) REFERENCES `ensaios`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ensaioId",
+            "columnName": "ensaio_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tipoVazao",
+            "columnName": "tipo_vazao",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "m1Escoamento",
+            "columnName": "m1_escoamento",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "m1LeituraInicial",
+            "columnName": "m1_leitura_inicial",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "m1LeituraFinal",
+            "columnName": "m1_leitura_final",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "m2Escoamento",
+            "columnName": "m2_escoamento",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "m2LeituraInicial",
+            "columnName": "m2_leitura_inicial",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "m2LeituraFinal",
+            "columnName": "m2_leitura_final",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "m3Escoamento",
+            "columnName": "m3_escoamento",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "m3LeituraInicial",
+            "columnName": "m3_leitura_inicial",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "m3LeituraFinal",
+            "columnName": "m3_leitura_final",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "m1PadraoInicial",
+            "columnName": "m1_padrao_inicial",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "m1PadraoFinal",
+            "columnName": "m1_padrao_final",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "m2PadraoInicial",
+            "columnName": "m2_padrao_inicial",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "m2PadraoFinal",
+            "columnName": "m2_padrao_final",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "m3PadraoInicial",
+            "columnName": "m3_padrao_inicial",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "m3PadraoFinal",
+            "columnName": "m3_padrao_final",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "erro1",
+            "columnName": "erro_1",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "erro2",
+            "columnName": "erro_2",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "erro3",
+            "columnName": "erro_3",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "erroMedio",
+            "columnName": "erro_medio",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "aprovado",
+            "columnName": "aprovado",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_vazao_ensaios_ensaio_id",
+            "unique": false,
+            "columnNames": [
+              "ensaio_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_vazao_ensaios_ensaio_id` ON `${TABLE_NAME}` (`ensaio_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "ensaios",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "ensaio_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f615fd33877a193f5a12edf8d0eebc33')"
+    ]
+  }
+}

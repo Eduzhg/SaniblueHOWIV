@@ -1,6 +1,7 @@
 package com.saniblue.app.util
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -354,6 +355,32 @@ class PdfGenerator @Inject constructor(private val context: Context) {
         canvas.drawText(trunc(ensaio.motivoNaoRealizado.ifBlank { "-" }, 80),
             ML + 2f, y + 14f, textPaint(Color.BLACK, 9f, bold = true))
         y += 24f
+
+        if (ensaio.fotoPath.isNotBlank()) {
+            drawFotoNaoRealizado(ensaio.fotoPath)
+        }
+    }
+
+    private fun drawFotoNaoRealizado(fotoPath: String) {
+        val bitmap = FotoEnsaioHelper.carregarBitmap(context, fotoPath) ?: return
+        drawTitulo("FOTO DO LOCAL")
+
+        // Dimensões respeitando largura útil E altura máxima (evita estourar a página
+        // com fotos em retrato). Altura máx. ≈ página menos margens/rodapé.
+        val maxH = PH - 55f - 60f
+        var imgW = CW
+        var imgH = CW * bitmap.height.toFloat() / bitmap.width.toFloat()
+        if (imgH > maxH) {
+            imgH = maxH
+            imgW = maxH * bitmap.width.toFloat() / bitmap.height.toFloat()
+        }
+
+        checkSpace(imgH + 12f)
+        y += 4f
+        val destino = android.graphics.RectF(ML, y, ML + imgW, y + imgH)
+        canvas.drawBitmap(bitmap, null, destino, Paint().apply { isFilterBitmap = true })
+        y += imgH + 8f
+        bitmap.recycle()
     }
 
     // ─────────────────────────────────────────────────────────────────

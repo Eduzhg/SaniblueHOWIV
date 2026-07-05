@@ -66,6 +66,9 @@ data class EnsaioEntity(
     @ColumnInfo("numero_serie_novo") val numeroSerieNovo: String = "",
     @ColumnInfo("leitura_inicial_novo") val leituraInicialNovo: String = "",
 
+    // Foto do local (apenas ensaios não realizados)
+    @ColumnInfo("foto_path") val fotoPath: String = "",
+
     // Acompanhamento do ensaio pelo cliente (testemunha)
     @ColumnInfo("cliente_acompanhou") val clienteAcompanhou: Boolean = false,
     @ColumnInfo("cliente_recusou_dados") val clienteRecusouDados: Boolean = false,

@@ -1,7 +1,6 @@
 package com.saniblue.app.presentation.screens.detalhes
 
 import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,12 +11,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PictureAsPdf
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -39,6 +38,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -49,6 +49,7 @@ import com.saniblue.app.domain.model.Ensaio
 import com.saniblue.app.domain.model.NormaEnsaio
 import com.saniblue.app.domain.model.VazaoEnsaio
 import com.saniblue.app.presentation.components.ErroChip
+import coil.compose.AsyncImage
 import com.saniblue.app.presentation.components.InfoRow
 import com.saniblue.app.presentation.components.LoadingContent
 import com.saniblue.app.presentation.components.SectionHeader
@@ -91,7 +92,7 @@ fun DetalhesEnsaioScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, null, tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = SaniblueBlue),
@@ -169,8 +170,16 @@ fun DetalhesEnsaioScreen(
                         // Ensaio não realizado
                         SectionHeader("Ensaio Não Realizado")
                         Card {
-                            Column(Modifier.padding(12.dp)) {
+                            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 InfoRow("Motivo", ensaio.motivoNaoRealizado.ifBlank { "-" })
+                                if (ensaio.fotoPath.isNotBlank()) {
+                                    Text("Foto do local", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    AsyncImage(
+                                        model = ensaio.fotoPath,
+                                        contentDescription = "Foto do local",
+                                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
+                                    )
+                                }
                             }
                         }
                     } else {
