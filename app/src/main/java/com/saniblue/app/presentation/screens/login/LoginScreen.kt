@@ -30,8 +30,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -198,46 +196,24 @@ fun LoginScreen(
 
                     HorizontalDivider()
 
-                    // === Configuração do turno: método + maleta ===
+                    // === Configuração embutida neste app (definida no build da maleta) ===
+                    // Somente leitura — o tipo de ensaio, a maleta e o erro padrão são
+                    // fixos por build; o técnico não escolhe nada aqui.
+                    val metodoLabel = remember {
+                        runCatching { MetodoEnsaio.valueOf(BuildConfig.TIPO_ENSAIO).label }
+                            .getOrDefault(BuildConfig.TIPO_ENSAIO)
+                    }
                     Text(
-                        text = "Configuração da Maleta",
+                        text = "Configuração deste aparelho",
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.fillMaxWidth()
                     )
-
-                    Text("Método de ensaio", style = MaterialTheme.typography.labelSmall)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        MetodoEnsaio.entries.forEach { metodo ->
-                            FilterChip(
-                                selected = uiState.metodoEnsaio == metodo,
-                                onClick = { viewModel.onMetodoChange(metodo) },
-                                label = { Text(metodo.label, style = MaterialTheme.typography.labelSmall) },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = SaniblueBlue,
-                                    selectedLabelColor = Color.White
-                                )
-                            )
-                        }
-                    }
-
-                    Text("Maleta", style = MaterialTheme.typography.labelSmall)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        uiState.maletas.forEach { maleta ->
-                            FilterChip(
-                                selected = uiState.maletaSelecionada.id == maleta.id,
-                                onClick = { viewModel.onMaletaChange(maleta) },
-                                label = { Text(maleta.nome, style = MaterialTheme.typography.labelSmall) },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = SaniblueBlue,
-                                    selectedLabelColor = Color.White
-                                )
-                            )
-                        }
-                    }
+                    Text("Tipo de ensaio: $metodoLabel", style = MaterialTheme.typography.bodySmall)
+                    Text("Maleta: ${BuildConfig.MALETA_NOME}", style = MaterialTheme.typography.bodySmall)
                     Text(
-                        text = "Erro padrão: ${uiState.maletaSelecionada.erroPadrao}%",
-                        style = MaterialTheme.typography.labelSmall,
+                        text = "Erro padrão: ${BuildConfig.ERRO_PADRAO}%",
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 

@@ -54,10 +54,14 @@ data class MedicaoState(
     // técnico já confirmou que a leitura com erro absurdo está correta
     val altoErroConfirmado: Boolean = false,
     // técnico já confirmou que a leitura inicial (menor que a final anterior) está correta
-    val leituraInicialConfirmada: Boolean = false
+    val leituraInicialConfirmada: Boolean = false,
+    // técnico já confirmou que a leitura final < inicial (hidrômetro em teste) está correta
+    val leituraFinalMenorConfirmada: Boolean = false,
+    // técnico já confirmou que o padrão final < inicial (padrão ultrassônico) está correto
+    val padraoFinalMenorConfirmada: Boolean = false
 )
 
-enum class TipoAlertaLeitura { ERRO_ALTO, LEITURA_RETROCEDIDA }
+enum class TipoAlertaLeitura { ERRO_ALTO, LEITURA_RETROCEDIDA, FINAL_MENOR_INICIAL }
 
 /** Pedido de confirmação de leitura suspeita (provável erro de digitação ou hidrômetro "retrocedendo"). */
 data class AlertaLeitura(
@@ -65,7 +69,11 @@ data class AlertaLeitura(
     val indice: Int,
     val tipoAlerta: TipoAlertaLeitura,
     val erroPct: Double = 0.0,
-    val leituraAnterior: Double = 0.0
+    val leituraAnterior: Double = 0.0,
+    // FINAL_MENOR_INICIAL: identifica o par (padrão x hidrômetro) e os valores digitados
+    val ehPadrao: Boolean = false,
+    val valorInicial: Double = 0.0,
+    val valorFinal: Double = 0.0
 )
 
 /**
@@ -414,6 +422,9 @@ class NovoEnsaioViewModel @Inject constructor(
             val m = when (alerta.tipoAlerta) {
                 TipoAlertaLeitura.ERRO_ALTO -> atual.copy(altoErroConfirmado = true)
                 TipoAlertaLeitura.LEITURA_RETROCEDIDA -> atual.copy(leituraInicialConfirmada = true)
+                TipoAlertaLeitura.FINAL_MENOR_INICIAL ->
+                    if (alerta.ehPadrao) atual.copy(padraoFinalMenorConfirmada = true)
+                    else atual.copy(leituraFinalMenorConfirmada = true)
             }
             withVazao(alerta.tipo, vs.withMedicao(alerta.indice, m)).copy(alertaLeitura = null)
         }
@@ -499,7 +510,9 @@ class NovoEnsaioViewModel @Inject constructor(
                 padraoFinal = padraoFinal?.filtrarDecimal(3) ?: m.padraoFinal,
                 // qualquer alteração reabilita as checagens de leitura suspeita
                 altoErroConfirmado = false,
-                leituraInicialConfirmada = false
+                leituraInicialConfirmada = false,
+                leituraFinalMenorConfirmada = false,
+                padraoFinalMenorConfirmada = false
             )
             withVazao(tipo, vs.withMedicao(indice, novo))
         }
@@ -548,6 +561,50 @@ class NovoEnsaioViewModel @Inject constructor(
         val erro = m.erro
         if (erro != null && !m.altoErroConfirmado && kotlin.math.abs(erro) > LIMITE_ALERTA_ERRO) {
             update { copy(alertaLeitura = AlertaLeitura(tipo, indice, TipoAlertaLeitura.ERRO_ALTO, erroPct = erro)) }
+        }
+    }
+
+    /**
+     * Ao sair da leitura FINAL do hidrômetro em teste: se ela for menor que a inicial
+     * da mesma medição, avisa (o hidrômetro não retrocede dentro de uma medição). Se não
+     * for esse caso, segue para a verificação de erro alto.
+     */
+    fun verificarLeituraFinalSuspeita(tipo: TipoVazao, indice: Int) {
+        if (_uiState.value.alertaLeitura != null) return
+        val m = _uiState.value.vazao(tipo).medicao(indice)
+        if (!m.leituraFinalMenorConfirmada) {
+            val ini = m.leituraInicial.toDoubleLocale()
+            val fin = m.leituraFinal.toDoubleLocale()
+            if (ini != null && fin != null && fin < ini) {
+                update {
+                    copy(alertaLeitura = AlertaLeitura(
+                        tipo, indice, TipoAlertaLeitura.FINAL_MENOR_INICIAL,
+                        ehPadrao = false, valorInicial = ini, valorFinal = fin
+                    ))
+                }
+                return
+            }
+        }
+        verificarLeituraSuspeita(tipo, indice)
+    }
+
+    /**
+     * Ao sair da leitura FINAL do padrão ultrassônico: se ela for menor que a inicial
+     * da mesma medição, avisa (o padrão também não retrocede).
+     */
+    fun verificarPadraoFinalSuspeita(tipo: TipoVazao, indice: Int) {
+        if (_uiState.value.alertaLeitura != null) return
+        val m = _uiState.value.vazao(tipo).medicao(indice)
+        if (m.padraoFinalMenorConfirmada) return
+        val ini = m.padraoInicial.toDoubleLocale()
+        val fin = m.padraoFinal.toDoubleLocale()
+        if (ini != null && fin != null && fin < ini) {
+            update {
+                copy(alertaLeitura = AlertaLeitura(
+                    tipo, indice, TipoAlertaLeitura.FINAL_MENOR_INICIAL,
+                    ehPadrao = true, valorInicial = ini, valorFinal = fin
+                ))
+            }
         }
     }
 

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">SANIBLUE Metrologia</string>
+    <!-- app_name é definido por flavor no build.gradle.kts (SANIBLUE Escoamento / Comparativo) -->
     <string name="app_description">Sistema de Verificação Metrológica de Hidrômetros</string>
 
     <!-- Login -->

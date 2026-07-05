@@ -24,6 +24,11 @@
     *;
 }
 
+# --- Dagger/Hilt: anotações de compilação (errorprone) ausentes em runtime --
+# São anotações usadas só pelo compilador; o Dagger as referencia mas elas não
+# existem em runtime. -dontwarn evita o R8 tratar "classe ausente" como erro.
+-dontwarn com.google.errorprone.annotations.**
+
 # --- ZXing (QR Code) --------------------------------------------------------
 -dontwarn com.google.zxing.**
 -keep class com.google.zxing.** { *; }

@@ -142,7 +142,7 @@ fun ConfiguracoesScreen(
 
             // === Manutenção — apenas em builds de teste (debug) ===
             if (BuildConfig.DEBUG) {
-                ConfigSection(titulo = "Manutenção (Testes)") {
+                ConfigSection(titulo = "Manutenção") {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -150,7 +150,7 @@ fun ConfiguracoesScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Text(
-                            text = "Apaga todos os ensaios do dispositivo. Disponível apenas em builds de teste.",
+                            text = "Apaga todos os ensaios do dispositivo.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

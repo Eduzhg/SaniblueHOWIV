@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.HourglassEmpty
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PhotoCamera
 import com.saniblue.app.util.FotoEnsaioHelper
 import androidx.compose.material3.AlertDialog
@@ -193,6 +194,15 @@ fun NovoEnsaioScreen(
                             "anterior (${"%.3f".format(alerta.leituraAnterior)}). O hidrômetro não retrocede — " +
                             "confira se os valores digitados estão corretos."
                     )
+                    TipoAlertaLeitura.FINAL_MENOR_INICIAL -> {
+                        val quem = if (alerta.ehPadrao) "do padrão ultrassônico" else "do hidrômetro em teste"
+                        Text(
+                            "Na medição ${alerta.indice}, a leitura final $quem " +
+                                "(${"%.3f".format(alerta.valorFinal)}) é menor que a inicial " +
+                                "(${"%.3f".format(alerta.valorInicial)}). A leitura não retrocede — " +
+                                "confira se os valores digitados estão corretos."
+                        )
+                    }
                 }
             },
             confirmButton = {
@@ -404,7 +414,7 @@ private fun PassoCadastro(uiState: NovoEnsaioUiState, viewModel: NovoEnsaioViewM
             elevation = CardDefaults.cardElevation(0.dp)
         ) {
             Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text("Configuração do turno (definida no login)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Configuração do turno", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("Método: ${uiState.metodoEnsaio.label}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = SaniblueBlue)
                 Text("Maleta: ${uiState.maletaNome}  •  Erro padrão: ${uiState.erroPadrao}%", style = MaterialTheme.typography.bodySmall, color = SaniblueBlue)
             }
@@ -517,10 +527,17 @@ private fun PassoCadastro(uiState: NovoEnsaioUiState, viewModel: NovoEnsaioViewM
             }
         }
 
+        // Idade é derivada do nº de série (ano de fabricação) — somente leitura.
         OutlinedTextField(
             value = uiState.idadeHidrometro,
-            onValueChange = viewModel::updateIdadeHidrometro,
-            label = { Text("Idade do Hidrômetro (automática pelo nº de série) *") },
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Idade do Hidrômetro") },
+            placeholder = { Text("Calculada pelo nº de série") },
+            trailingIcon = {
+                Icon(Icons.Default.Lock, contentDescription = "Campo automático, não editável")
+            },
+            supportingText = { Text("Preenchida automaticamente pelo nº de série") },
             isError = uiState.validationErrors.containsKey("idadeHidrometro"),
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
@@ -804,7 +821,8 @@ private fun PassoVazao(tipo: TipoVazao, uiState: NovoEnsaioUiState, viewModel: N
                     onPadraoInicialChange = { viewModel.updateMedicao(tipo, indice, padraoInicial = it) },
                     onPadraoFinalChange = { viewModel.updateMedicao(tipo, indice, padraoFinal = it) },
                     onLeituraInicialBlur = { viewModel.verificarLeituraInicialSuspeita(tipo, indice) },
-                    onLeituraFinalBlur = { viewModel.verificarLeituraSuspeita(tipo, indice) }
+                    onLeituraFinalBlur = { viewModel.verificarLeituraFinalSuspeita(tipo, indice) },
+                    onPadraoFinalBlur = { viewModel.verificarPadraoFinalSuspeita(tipo, indice) }
                 )
             }
 

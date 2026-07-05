@@ -44,6 +44,7 @@ fun MedicaoInputRow(
     onPadraoFinalChange: (String) -> Unit,
     onLeituraInicialBlur: () -> Unit = {},
     onLeituraFinalBlur: () -> Unit = {},
+    onPadraoFinalBlur: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val comparativo = metodo == MetodoEnsaio.COMPARATIVO_LEITURA
@@ -94,7 +95,7 @@ fun MedicaoInputRow(
                         label = { Text("Padrão Final", style = MaterialTheme.typography.labelSmall) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).aoSairDoCampo(onPadraoFinalBlur),
                         textStyle = MaterialTheme.typography.bodyMedium
                     )
                     OutlinedTextField(
@@ -172,12 +173,21 @@ fun MedicaoInputRow(
                 }
             }
 
-            // Escoamento corrigido pelo erro padrão da maleta (volume de referência real)
+            // Escoamento corrigido pelo erro padrão da maleta (volume de referência real).
+            // O erro padrão é SINALIZADO: positivo reduz o volume, negativo aumenta.
+            // A variação aplicada ao volume é -erroPadrao (ex.: erroPadrao +0,42 → −0,42%).
             val escBruto = escoamento.toDoubleLocale()
             if (escBruto != null && escBruto > 0.0) {
                 val corrigido = escBruto * (100.0 - erroPadrao) / 100.0
+                val label = if (erroPadrao == 0.0) {
+                    "Escoamento: ${"%.3f".format(corrigido)} L"
+                } else {
+                    val ajuste = -erroPadrao
+                    val sinal = if (ajuste >= 0.0) "+" else "−"
+                    "Escoamento corrigido ($sinal${"%.2f".format(kotlin.math.abs(ajuste))}%): ${"%.3f".format(corrigido)} L"
+                }
                 Text(
-                    text = "Escoamento corrigido (−$erroPadrao%): ${"%.3f".format(corrigido)} L",
+                    text = label,
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.primary

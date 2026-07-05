@@ -1,29 +1,30 @@
 package com.saniblue.app.domain.session
 
+import com.saniblue.app.BuildConfig
 import com.saniblue.app.domain.model.Maleta
-import com.saniblue.app.domain.model.MaletasDisponiveis
 import com.saniblue.app.domain.model.MetodoEnsaio
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Guarda as escolhas feitas pelo técnico no login e válidas para toda a sessão:
- *  - método de ensaio (escoamento direto / comparativo por leitura)
- *  - maleta em uso (define o erro padrão aplicado no cálculo)
+ * Configuração do app, definida no build de cada maleta (não mais escolhida no login):
+ *  - método de ensaio (escoamento direto / comparativo por leitura) — travado pelo flavor
+ *  - maleta em uso e seu erro padrão — embutidos via -PmaletaNome / -PerroPadrao
  *
- * É um singleton em memória — reiniciar o app exige novo login, então a seleção
- * é refeita por turno, que é exatamente o comportamento desejado.
+ * Cada maleta vendida recebe um APK próprio com esses valores fixos, então o técnico
+ * não escolhe nem pode errar o tipo ou o erro padrão. Os valores vêm do BuildConfig
+ * (ver productFlavors + buildConfigField em app/build.gradle.kts).
  */
 @Singleton
 class SessaoTecnico @Inject constructor() {
-    var metodoEnsaio: MetodoEnsaio = MetodoEnsaio.ESCOAMENTO_DIRETO
-        private set
 
-    var maleta: Maleta = MaletasDisponiveis.padrao
-        private set
+    val metodoEnsaio: MetodoEnsaio =
+        runCatching { MetodoEnsaio.valueOf(BuildConfig.TIPO_ENSAIO) }
+            .getOrDefault(MetodoEnsaio.ESCOAMENTO_DIRETO)
 
-    fun definir(metodo: MetodoEnsaio, maleta: Maleta) {
-        this.metodoEnsaio = metodo
-        this.maleta = maleta
-    }
+    val maleta: Maleta = Maleta(
+        id = "build",
+        nome = BuildConfig.MALETA_NOME,
+        erroPadrao = BuildConfig.ERRO_PADRAO
+    )
 }

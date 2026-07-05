@@ -22,6 +22,35 @@ android {
         ksp {
             arg("room.schemaLocation", "$projectDir/schemas")
         }
+
+        // === Configuração da maleta (embutida no build) ===
+        // Nome e erro padrão são passados na hora de compilar cada maleta:
+        //   ./gradlew assembleComparativoRelease -PmaletaNome="M-003" -PerroPadrao=0.42
+        // Sem parâmetros, usa os valores de teste abaixo (desenvolvimento).
+        val maletaNome = (project.findProperty("maletaNome") as String?) ?: "Maleta de Teste"
+        val erroPadrao = (project.findProperty("erroPadrao") as String?) ?: "0.5"
+        buildConfigField("String", "MALETA_NOME", "\"$maletaNome\"")
+        buildConfigField("double", "ERRO_PADRAO", erroPadrao)
+    }
+
+    // === Tipo de ensaio (uma variante por tipo) ===
+    // Cada maleta é de UM tipo só. O flavor trava o tipo no build e esconde o outro.
+    //   assembleEscoamento*  → app de escoamento direto
+    //   assembleComparativo* → app de comparativo por leitura
+    flavorDimensions += "tipoEnsaio"
+    productFlavors {
+        create("escoamento") {
+            dimension = "tipoEnsaio"
+            applicationIdSuffix = ".escoamento"
+            buildConfigField("String", "TIPO_ENSAIO", "\"ESCOAMENTO_DIRETO\"")
+            resValue("string", "app_name", "SANIBLUE Escoamento")
+        }
+        create("comparativo") {
+            dimension = "tipoEnsaio"
+            applicationIdSuffix = ".comparativo"
+            buildConfigField("String", "TIPO_ENSAIO", "\"COMPARATIVO_LEITURA\"")
+            resValue("string", "app_name", "SANIBLUE Comparativo")
+        }
     }
 
     buildTypes {

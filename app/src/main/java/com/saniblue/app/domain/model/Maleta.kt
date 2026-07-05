@@ -16,14 +16,3 @@ data class Maleta(
     val nome: String,
     val erroPadrao: Double // % (ex.: 0.5)
 )
-
-object MaletasDisponiveis {
-    val lista: List<Maleta> = listOf(
-        Maleta(id = "teste", nome = "Maleta de Teste", erroPadrao = 0.5)
-        // Adicionar aqui as maletas reais (nome + erro padrão do certificado)
-    )
-
-    val padrao: Maleta get() = lista.first()
-
-    fun porId(id: String?): Maleta = lista.firstOrNull { it.id == id } ?: padrao
-}
