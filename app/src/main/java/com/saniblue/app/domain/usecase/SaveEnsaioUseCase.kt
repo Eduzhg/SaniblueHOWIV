@@ -25,7 +25,7 @@ class SaveEnsaioUseCase @Inject constructor(
             // Recalcular todos os erros antes de salvar (limites vêm da norma,
             // escoamento corrigido pelo erro padrão da maleta)
             val vazoesCalculadas = ensaio.vazoes.map { vazao ->
-                calcularErro.calcularVazao(vazao, ensaio.norma, ensaio.erroPadrao)
+                calcularErro.calcularVazao(vazao, ensaio.norma, ensaio.erroPadraoPara(vazao.tipoVazao))
             }
             val resultadoFinal = calcularErro.calcularResultadoFinal(vazoesCalculadas)
 

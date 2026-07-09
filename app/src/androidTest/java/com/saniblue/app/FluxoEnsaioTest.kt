@@ -86,7 +86,7 @@ class FluxoEnsaioTest {
         compose.onNodeWithText("Cidade *").performScrollTo().performTextInput("Blumenau")
         compose.onNodeWithText("Temp. Água (°C) *").performScrollTo().performTextInput("20")
         compose.onNodeWithText("Técnico Responsável *").performScrollTo().performTextInput("Técnico UI")
-        compose.onNodeWithText("Pressão Média (mca) *").performScrollTo().performTextInput("25")
+        compose.onNodeWithText("Pressão Média (kg/cm²) *").performScrollTo().performTextInput("25")
     }
 
     /** Preenche uma das 3 medições da vazão em tela (índice 0..2). */

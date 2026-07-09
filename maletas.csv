@@ -1,11 +1,12 @@
 # Lista de maletas para gerar os APKs (uma por linha).
-# Formato:  flavor,nome,erroPadrao
-#   flavor     = escoamento  (escoamento direto)  |  comparativo  (comparativo por leitura)
-#   nome       = identificacao da maleta (aparece no login e no laudo)
-#   erroPadrao = erro padrao do certificado, em % (use PONTO decimal, nao virgula!)
-#                POSITIVO (ex.:  0.42) -> DIMINUI o volume de referencia em 0,42%
-#                NEGATIVO (ex.: -0.42) -> AUMENTA o volume de referencia em 0,42%
+# Formato:  flavor,nome,erroNominal,erroTransicao,erroMinima
+#   flavor        = escoamento (escoamento direto) | comparativo (comparativo por leitura)
+#   nome          = identificacao da maleta (aparece no login e no laudo)
+#   erroNominal   = erro padrao (%) do certificado na vazao NOMINAL
+#   erroTransicao = erro padrao (%) do certificado na vazao de TRANSICAO
+#   erroMinima    = erro padrao (%) do certificado na vazao MINIMA
 #
+# Use PONTO decimal (nao virgula!). Sinal: POSITIVO diminui, NEGATIVO aumenta o volume.
 # Linhas comecando com # sao ignoradas. Edite os exemplos abaixo:
-comparativo,M-001,0.42
-escoamento,M-002,0.41
+comparativo,M-001,0.42,0.40,0.55
+escoamento,M-002,0.41,0.38,0.50

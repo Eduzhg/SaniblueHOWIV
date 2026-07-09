@@ -155,11 +155,13 @@ fun DetalhesEnsaioScreen(
                             InfoRow("Técnico", ensaio.tecnicoResponsavel)
                             InfoRow("Data", ensaio.dataEnsaio)
                             InfoRow("Idade", ensaio.idadeHidrometro.ifBlank { "-" })
-                            InfoRow("Pressão Média", ensaio.pressaoMedia.let { if (it.isBlank()) "-" else "$it mca" })
+                            InfoRow("Pressão Média", ensaio.pressaoMedia.let { if (it.isBlank()) "-" else "$it kg/cm²" })
                             InfoRow("Norma", ensaio.norma.descricao)
                             InfoRow("Método", ensaio.metodoEnsaio.label)
                             InfoRow("Maleta", ensaio.maletaNome.ifBlank { "-" })
-                            InfoRow("Erro Padrão", "${ensaio.erroPadrao}%")
+                            InfoRow("Erro Padrão (Nominal)", "${ensaio.erroPadraoNominal}%")
+                            InfoRow("Erro Padrão (Transição)", "${ensaio.erroPadraoTransicao}%")
+                            InfoRow("Erro Padrão (Mínima)", "${ensaio.erroPadraoMinima}%")
                             if (ensaio.observacoes.isNotBlank()) {
                                 InfoRow("Observações", ensaio.observacoes)
                             }

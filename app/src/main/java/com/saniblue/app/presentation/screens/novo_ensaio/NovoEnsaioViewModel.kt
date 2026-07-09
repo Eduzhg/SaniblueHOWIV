@@ -119,9 +119,11 @@ data class NovoEnsaioUiState(
     val norma: NormaEnsaio = NormaEnsaio.PORTARIA_246,
     val metodoEnsaio: MetodoEnsaio = MetodoEnsaio.ESCOAMENTO_DIRETO,
     val maletaNome: String = "",
-    val erroPadrao: Double = 0.0,
+    val erroPadraoNominal: Double = 0.0,
+    val erroPadraoTransicao: Double = 0.0,
+    val erroPadraoMinima: Double = 0.0,
 
-    // Pressão média (mca)
+    // Pressão média (kg/cm²)
     val pressaoMedia: String = "",
 
     // Ensaio não realizado
@@ -178,7 +180,14 @@ data class NovoEnsaioUiState(
     val passoAtual: Int = 0,
     // Aviso transitório mostrado em snackbar (não bloqueia a navegação)
     val mensagemAviso: String? = null
-)
+) {
+    /** Erro padrão (%) da maleta para a vazão informada. */
+    fun erroPadraoPara(tipo: TipoVazao): Double = when (tipo) {
+        TipoVazao.NOMINAL -> erroPadraoNominal
+        TipoVazao.TRANSICAO -> erroPadraoTransicao
+        TipoVazao.MINIMA -> erroPadraoMinima
+    }
+}
 
 // Total de etapas do wizard: Cadastro, Nominal, Transição, Mínima, Resultado
 const val TOTAL_PASSOS = 5
@@ -201,7 +210,9 @@ class NovoEnsaioViewModel @Inject constructor(
             // Método e maleta vêm do login (sessão do turno)
             metodoEnsaio = sessao.metodoEnsaio,
             maletaNome = sessao.maleta.nome,
-            erroPadrao = sessao.maleta.erroPadrao,
+            erroPadraoNominal = sessao.maleta.erroPadraoNominal,
+            erroPadraoTransicao = sessao.maleta.erroPadraoTransicao,
+            erroPadraoMinima = sessao.maleta.erroPadraoMinima,
             // Data do ensaio já vem com a data atual (editável)
             dataEnsaio = dataAtualDigits()
         )
@@ -272,7 +283,10 @@ class NovoEnsaioViewModel @Inject constructor(
                 norma = ensaio.norma,
                 metodoEnsaio = ensaio.metodoEnsaio,
                 maletaNome = ensaio.maletaNome.ifBlank { sessao.maleta.nome },
-                erroPadrao = if (ensaio.maletaNome.isBlank()) sessao.maleta.erroPadrao else ensaio.erroPadrao,
+                // Erros padrão: se o ensaio salvo não tinha maleta, usa os do build atual
+                erroPadraoNominal = if (ensaio.maletaNome.isBlank()) sessao.maleta.erroPadraoNominal else ensaio.erroPadraoNominal,
+                erroPadraoTransicao = if (ensaio.maletaNome.isBlank()) sessao.maleta.erroPadraoTransicao else ensaio.erroPadraoTransicao,
+                erroPadraoMinima = if (ensaio.maletaNome.isBlank()) sessao.maleta.erroPadraoMinima else ensaio.erroPadraoMinima,
                 pressaoMedia = ensaio.pressaoMedia,
                 realizado = ensaio.realizado,
                 motivoNaoRealizado = ensaio.motivoNaoRealizado,
@@ -524,10 +538,11 @@ class NovoEnsaioViewModel @Inject constructor(
         val metodo = state.metodoEnsaio
         val norma = state.norma
         val vs = state.vazao(tipo)
+        val erroPadrao = state.erroPadraoPara(tipo)
 
         fun processar(m: MedicaoState): Pair<MedicaoState, Double?> {
             val esc = escoamentoDe(m, metodo)
-            val erro = calcularErroDaMedicao(m, metodo)
+            val erro = calcularErroDaMedicao(m, metodo, erroPadrao)
             // No método comparativo o escoamento é calculado e exibido (read-only)
             val escStr = if (metodo == MetodoEnsaio.COMPARATIVO_LEITURA) {
                 esc?.let { formatNum(it) } ?: ""
@@ -641,12 +656,12 @@ class NovoEnsaioViewModel @Inject constructor(
         }
     }
 
-    private fun calcularErroDaMedicao(m: MedicaoState, metodo: MetodoEnsaio): Double? {
+    private fun calcularErroDaMedicao(m: MedicaoState, metodo: MetodoEnsaio, erroPadrao: Double): Double? {
         val esc = escoamentoDe(m, metodo) ?: return null
         val ini = m.leituraInicial.toDoubleLocale() ?: return null
         val fin = m.leituraFinal.toDoubleLocale() ?: return null
-        // Escoamento corrigido pelo erro padrão da maleta
-        return calcularErro.calcularErro(esc, ini, fin, _uiState.value.erroPadrao)
+        // Escoamento corrigido pelo erro padrão da maleta (específico da vazão)
+        return calcularErro.calcularErro(esc, ini, fin, erroPadrao)
     }
 
     private fun atualizarResultadoFinal() = update { copy(resultadoFinal = resultadoDe(this)) }
@@ -795,7 +810,9 @@ class NovoEnsaioViewModel @Inject constructor(
                 norma = state.norma,
                 metodoEnsaio = state.metodoEnsaio,
                 maletaNome = state.maletaNome,
-                erroPadrao = state.erroPadrao,
+                erroPadraoNominal = state.erroPadraoNominal,
+                erroPadraoTransicao = state.erroPadraoTransicao,
+                erroPadraoMinima = state.erroPadraoMinima,
                 pressaoMedia = state.pressaoMedia,
                 realizado = state.realizado,
                 motivoNaoRealizado = if (state.realizado) "" else state.motivoNaoRealizado,
@@ -938,7 +955,9 @@ class NovoEnsaioViewModel @Inject constructor(
         _uiState.value = NovoEnsaioUiState(
             metodoEnsaio = sessao.metodoEnsaio,
             maletaNome = sessao.maleta.nome,
-            erroPadrao = sessao.maleta.erroPadrao,
+            erroPadraoNominal = sessao.maleta.erroPadraoNominal,
+            erroPadraoTransicao = sessao.maleta.erroPadraoTransicao,
+            erroPadraoMinima = sessao.maleta.erroPadraoMinima,
             dataEnsaio = dataAtualDigits()
         )
     }

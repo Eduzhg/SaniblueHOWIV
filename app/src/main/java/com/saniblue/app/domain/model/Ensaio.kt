@@ -18,9 +18,11 @@ data class Ensaio(
     // Norma e método usados no ensaio
     val norma: NormaEnsaio = NormaEnsaio.PORTARIA_246,
     val metodoEnsaio: MetodoEnsaio = MetodoEnsaio.ESCOAMENTO_DIRETO,
-    // Maleta usada e seu erro padrão (do certificado) aplicado no cálculo
+    // Maleta usada e seus erros padrão (do certificado) por vazão, aplicados no cálculo
     val maletaNome: String = "",
-    val erroPadrao: Double = 0.0,
+    val erroPadraoNominal: Double = 0.0,
+    val erroPadraoTransicao: Double = 0.0,
+    val erroPadraoMinima: Double = 0.0,
     // Pressão média durante o ensaio (mca)
     val pressaoMedia: String = "",
     // Ensaio não realizado + motivo (morador ausente, sem acesso, etc.)
@@ -42,7 +44,14 @@ data class Ensaio(
     val vazoes: List<VazaoEnsaio> = emptyList(),
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
-)
+) {
+    /** Erro padrão (%) aplicado ao volume de referência da vazão informada. */
+    fun erroPadraoPara(tipo: TipoVazao): Double = when (tipo) {
+        TipoVazao.NOMINAL -> erroPadraoNominal
+        TipoVazao.TRANSICAO -> erroPadraoTransicao
+        TipoVazao.MINIMA -> erroPadraoMinima
+    }
+}
 
 enum class ResultadoFinal {
     APROVADO, REPROVADO, PENDENTE, NAO_REALIZADO

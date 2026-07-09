@@ -9,10 +9,11 @@ import javax.inject.Singleton
 /**
  * Configuração do app, definida no build de cada maleta (não mais escolhida no login):
  *  - método de ensaio (escoamento direto / comparativo por leitura) — travado pelo flavor
- *  - maleta em uso e seu erro padrão — embutidos via -PmaletaNome / -PerroPadrao
+ *  - maleta em uso e seus erros padrão (por vazão) — embutidos via -PmaletaNome /
+ *    -PerroNominal / -PerroTransicao / -PerroMinima
  *
  * Cada maleta vendida recebe um APK próprio com esses valores fixos, então o técnico
- * não escolhe nem pode errar o tipo ou o erro padrão. Os valores vêm do BuildConfig
+ * não escolhe nem pode errar o tipo ou os erros padrão. Os valores vêm do BuildConfig
  * (ver productFlavors + buildConfigField em app/build.gradle.kts).
  */
 @Singleton
@@ -25,6 +26,8 @@ class SessaoTecnico @Inject constructor() {
     val maleta: Maleta = Maleta(
         id = "build",
         nome = BuildConfig.MALETA_NOME,
-        erroPadrao = BuildConfig.ERRO_PADRAO
+        erroPadraoNominal = BuildConfig.ERRO_PADRAO_NOMINAL,
+        erroPadraoTransicao = BuildConfig.ERRO_PADRAO_TRANSICAO,
+        erroPadraoMinima = BuildConfig.ERRO_PADRAO_MINIMA
     )
 }

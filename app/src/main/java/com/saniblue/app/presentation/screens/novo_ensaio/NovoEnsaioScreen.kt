@@ -416,7 +416,12 @@ private fun PassoCadastro(uiState: NovoEnsaioUiState, viewModel: NovoEnsaioViewM
             Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text("Configuração do turno", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("Método: ${uiState.metodoEnsaio.label}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = SaniblueBlue)
-                Text("Maleta: ${uiState.maletaNome}  •  Erro padrão: ${uiState.erroPadrao}%", style = MaterialTheme.typography.bodySmall, color = SaniblueBlue)
+                Text("Maleta: ${uiState.maletaNome}", style = MaterialTheme.typography.bodySmall, color = SaniblueBlue)
+                Text(
+                    "Erro padrão — Nominal: ${uiState.erroPadraoNominal}%  •  Transição: ${uiState.erroPadraoTransicao}%  •  Mínima: ${uiState.erroPadraoMinima}%",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = SaniblueBlue
+                )
             }
         }
 
@@ -610,7 +615,7 @@ private fun PassoCadastro(uiState: NovoEnsaioUiState, viewModel: NovoEnsaioViewM
             OutlinedTextField(
                 value = uiState.pressaoMedia,
                 onValueChange = viewModel::updatePressaoMedia,
-                label = { Text("Pressão Média (mca) *") },
+                label = { Text("Pressão Média (kg/cm²) *") },
                 isError = uiState.validationErrors.containsKey("pressaoMedia"),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier.weight(1f),
@@ -814,7 +819,7 @@ private fun PassoVazao(tipo: TipoVazao, uiState: NovoEnsaioUiState, viewModel: N
                     padraoFinal = m.padraoFinal,
                     erro = m.erro,
                     aprovado = m.aprovado,
-                    erroPadrao = uiState.erroPadrao,
+                    erroPadrao = uiState.erroPadraoPara(tipo),
                     onEscoamentoChange = { viewModel.updateMedicao(tipo, indice, escoamento = it) },
                     onLeituraInicialChange = { viewModel.updateMedicao(tipo, indice, inicial = it) },
                     onLeituraFinalChange = { viewModel.updateMedicao(tipo, indice, final = it) },

@@ -141,7 +141,7 @@ class PdfGenerator @Inject constructor(private val context: Context) {
             "Cidade"        to ensaio.cidade.ifBlank { "-" },
             "Idade do Hidrômetro" to ensaio.idadeHidrometro.ifBlank { "-" },
             "Data do Ensaio" to ensaio.dataEnsaio,
-            "Pressão Média" to ensaio.pressaoMedia.let { if (it.isBlank()) "-" else "$it mca" },
+            "Pressão Média" to ensaio.pressaoMedia.let { if (it.isBlank()) "-" else "$it kg/cm²" },
             "Norma"         to ensaio.norma.descricao,
             "Método de Ensaio" to ensaio.metodoEnsaio.label
         )
@@ -157,7 +157,7 @@ class PdfGenerator @Inject constructor(private val context: Context) {
                 canvas.drawText(lbl, ML + col + 2f, y + 9f,  textPaint(Color.GRAY, 7.5f))
                 canvas.drawText(trunc(v, 36), ML + col + 2f, y + 20f, textPaint(Color.BLACK, 9f, bold = true))
             }
-            y += 26f
+            y += 23f
         }
 
         if (ensaio.observacoes.isNotBlank()) {
@@ -165,7 +165,7 @@ class PdfGenerator @Inject constructor(private val context: Context) {
             canvas.drawLine(ML, y, PW - ML, y, strokePaint(Color.LTGRAY, 0.4f))
             canvas.drawText("Observações", ML + 2f, y + 9f, textPaint(Color.GRAY, 7.5f))
             canvas.drawText(trunc(ensaio.observacoes, 80), ML + 2f, y + 20f, textPaint(Color.BLACK, 9f))
-            y += 26f
+            y += 23f
         }
 
         canvas.drawLine(ML, y, PW - ML, y, strokePaint(Color.LTGRAY, 0.4f))
@@ -182,8 +182,8 @@ class PdfGenerator @Inject constructor(private val context: Context) {
 
         listOf(TipoVazao.NOMINAL, TipoVazao.TRANSICAO, TipoVazao.MINIMA).forEach { tipo ->
             val vazao = ensaio.vazoes.find { it.tipoVazao == tipo }
-            drawTabelaVazao(tipo, vazao, modelo, ensaio.norma, ensaio.erroPadrao)
-            y += 10f
+            drawTabelaVazao(tipo, vazao, modelo, ensaio.norma, ensaio.erroPadraoPara(tipo))
+            y += 6f
         }
     }
 
@@ -365,11 +365,12 @@ class PdfGenerator @Inject constructor(private val context: Context) {
         val bitmap = FotoEnsaioHelper.carregarBitmap(context, fotoPath) ?: return
         drawTitulo("FOTO DO LOCAL")
 
-        // Dimensões respeitando largura útil E altura máxima (evita estourar a página
-        // com fotos em retrato). Altura máx. ≈ página menos margens/rodapé.
-        val maxH = PH - 55f - 60f
-        var imgW = CW
-        var imgH = CW * bitmap.height.toFloat() / bitmap.width.toFloat()
+        // Foto compacta no laudo (~1/4 da página): limita a altura e, se sobrar,
+        // também a largura, mantendo a proporção. Antes ocupava metade da página.
+        val maxH = 200f
+        val maxW = CW * 0.6f
+        var imgW = maxW
+        var imgH = maxW * bitmap.height.toFloat() / bitmap.width.toFloat()
         if (imgH > maxH) {
             imgH = maxH
             imgW = maxH * bitmap.width.toFloat() / bitmap.height.toFloat()
@@ -403,7 +404,7 @@ class PdfGenerator @Inject constructor(private val context: Context) {
             canvas.drawLine(ML, y, PW - ML, y, strokePaint(Color.LTGRAY, 0.4f))
             canvas.drawText(lbl, ML + 2f, y + 9f, textPaint(Color.GRAY, 7.5f))
             canvas.drawText(trunc(v, 60), ML + 2f, y + 20f, textPaint(Color.BLACK, 9f, bold = true))
-            y += 26f
+            y += 23f
         }
         canvas.drawLine(ML, y, PW - ML, y, strokePaint(Color.LTGRAY, 0.4f))
         y += 8f
@@ -444,7 +445,7 @@ class PdfGenerator @Inject constructor(private val context: Context) {
             canvas.drawLine(ML, y, PW - ML, y, strokePaint(Color.LTGRAY, 0.4f))
             canvas.drawText(lbl, ML + 2f, y + 9f, textPaint(Color.GRAY, 7.5f))
             canvas.drawText(trunc(v, 60), ML + 2f, y + 20f, textPaint(Color.BLACK, 9f, bold = true))
-            y += 26f
+            y += 23f
         }
         canvas.drawLine(ML, y, PW - ML, y, strokePaint(Color.LTGRAY, 0.4f))
         y += 8f
@@ -456,8 +457,8 @@ class PdfGenerator @Inject constructor(private val context: Context) {
 
     private fun drawAssinatura(ensaio: Ensaio) {
         // Espaço em branco para assinar + linha + identificação
-        checkSpace(96f)
-        y += 44f
+        checkSpace(70f)
+        y += 28f
 
         val cx   = PW / 2f
         val meia = 120f

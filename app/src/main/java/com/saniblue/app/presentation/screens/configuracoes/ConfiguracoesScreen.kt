@@ -140,35 +140,33 @@ fun ConfiguracoesScreen(
                 )
             }
 
-            // === Manutenção — apenas em builds de teste (debug) ===
-            if (BuildConfig.DEBUG) {
-                ConfigSection(titulo = "Manutenção") {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Text(
-                            text = "Apaga todos os ensaios do dispositivo.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+            // === Manutenção — apagar todos os ensaios do dispositivo ===
+            ConfigSection(titulo = "Manutenção") {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "Apaga todos os ensaios do dispositivo.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Button(
+                        onClick = { confirmarLimpeza = true },
+                        enabled = totalEnsaios > 0,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
                         )
-                        Button(
-                            onClick = { confirmarLimpeza = true },
-                            enabled = totalEnsaios > 0,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error
-                            )
-                        ) {
-                            Icon(Icons.Default.DeleteForever, contentDescription = null)
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                text = if (totalEnsaios > 0) "Limpar ensaios ($totalEnsaios)" else "Sem ensaios para limpar",
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                    ) {
+                        Icon(Icons.Default.DeleteForever, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = if (totalEnsaios > 0) "Limpar ensaios ($totalEnsaios)" else "Sem ensaios para limpar",
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }

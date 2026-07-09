@@ -50,9 +50,11 @@ data class EnsaioEntity(
     @ColumnInfo("norma") val norma: String = "PORTARIA_246",
     @ColumnInfo("metodo_ensaio") val metodoEnsaio: String = "ESCOAMENTO_DIRETO",
 
-    // Maleta usada e erro padrão aplicado
+    // Maleta usada e erros padrão (por vazão) aplicados no cálculo
     @ColumnInfo("maleta_nome") val maletaNome: String = "",
-    @ColumnInfo("erro_padrao") val erroPadrao: Double = 0.0,
+    @ColumnInfo("erro_padrao_nominal") val erroPadraoNominal: Double = 0.0,
+    @ColumnInfo("erro_padrao_transicao") val erroPadraoTransicao: Double = 0.0,
+    @ColumnInfo("erro_padrao_minima") val erroPadraoMinima: Double = 0.0,
 
     // Pressão média (mca)
     @ColumnInfo("pressao_media") val pressaoMedia: String = "",

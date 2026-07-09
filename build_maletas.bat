@@ -2,9 +2,9 @@
 setlocal enabledelayedexpansion
 REM ============================================================
 REM  Gera um APK release para cada maleta listada em maletas.csv
-REM  Formato do CSV (sem cabecalho): flavor,nome,erroPadrao
+REM  Formato do CSV: flavor,nome,erroNominal,erroTransicao,erroMinima
 REM    flavor = escoamento | comparativo
-REM  Ex.: comparativo,M-003,0.42
+REM  Ex.: comparativo,M-003,0.42,0.40,0.55
 REM
 REM  Os APKs finais ficam na pasta  maletas_apks\
 REM ============================================================
@@ -19,10 +19,12 @@ if not exist "maletas.csv" (
 set OUTDIR=maletas_apks
 if not exist "%OUTDIR%" mkdir "%OUTDIR%"
 
-for /f "usebackq tokens=1-3 delims=," %%A in ("maletas.csv") do (
+for /f "usebackq tokens=1-5 delims=," %%A in ("maletas.csv") do (
     set "FLAVOR=%%A"
     set "NOME=%%B"
-    set "ERRO=%%C"
+    set "ERRN=%%C"
+    set "ERRT=%%D"
+    set "ERRM=%%E"
 
     REM ignora linhas em branco e comentarios (#)
     if not "!FLAVOR!"=="" if not "!FLAVOR:~0,1!"=="#" (
@@ -35,9 +37,9 @@ for /f "usebackq tokens=1-3 delims=," %%A in ("maletas.csv") do (
         ) else (
             echo.
             echo ==========================================================
-            echo  Gerando: !FLAVOR!  ^|  Maleta !NOME!  ^|  Erro padrao !ERRO!%%
+            echo  Gerando: !FLAVOR!  ^|  Maleta !NOME!  ^|  Erros N=!ERRN! T=!ERRT! M=!ERRM!
             echo ==========================================================
-            call gradlew.bat !TASK! -PmaletaNome="!NOME!" -PerroPadrao=!ERRO!
+            call gradlew.bat !TASK! -PmaletaNome="!NOME!" -PerroNominal=!ERRN! -PerroTransicao=!ERRT! -PerroMinima=!ERRM!
             if errorlevel 1 (
                 echo [ERRO] Falha ao gerar a maleta !NOME!. Abortando.
                 exit /b 1

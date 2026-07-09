@@ -46,6 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -96,34 +97,22 @@ fun LoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Logo
-            Box(
+            // Logo da marca (card horizontal saniblue2)
+            Image(
+                painter = painterResource(R.drawable.logo_saniblue2),
+                contentDescription = "Logo Saniblue",
                 modifier = Modifier
-                    .size(104.dp)
-                    .background(Color.White, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = painterResource(R.drawable.logo_saniblue),
-                    contentDescription = "Logo Saniblue",
-                    modifier = Modifier.size(72.dp),
-                    contentScale = ContentScale.Fit
-                )
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            Text(
-                text = "SANIBLUE",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = Color.White,
-                letterSpacing = 3.sp
+                    .fillMaxWidth(0.85f)
+                    .clip(RoundedCornerShape(16.dp)),
+                contentScale = ContentScale.FillWidth
             )
+
+            Spacer(Modifier.height(12.dp))
+
             Text(
                 text = "Metrologia",
                 fontSize = 14.sp,
-                color = Color.White.copy(alpha = 0.8f),
+                color = Color.White.copy(alpha = 0.85f),
                 letterSpacing = 1.sp
             )
 
@@ -211,8 +200,11 @@ fun LoginScreen(
                     )
                     Text("Tipo de ensaio: $metodoLabel", style = MaterialTheme.typography.bodySmall)
                     Text("Maleta: ${BuildConfig.MALETA_NOME}", style = MaterialTheme.typography.bodySmall)
+                    Text("Erros padrão da maleta (por vazão):", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
                     Text(
-                        text = "Erro padrão: ${BuildConfig.ERRO_PADRAO}%",
+                        text = "• Nominal: ${BuildConfig.ERRO_PADRAO_NOMINAL}%\n" +
+                            "• Transição: ${BuildConfig.ERRO_PADRAO_TRANSICAO}%\n" +
+                            "• Mínima: ${BuildConfig.ERRO_PADRAO_MINIMA}%",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

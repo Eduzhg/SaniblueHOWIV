@@ -24,13 +24,18 @@ android {
         }
 
         // === Configuração da maleta (embutida no build) ===
-        // Nome e erro padrão são passados na hora de compilar cada maleta:
-        //   ./gradlew assembleComparativoRelease -PmaletaNome="M-003" -PerroPadrao=0.42
+        // Nome e erros padrão (um por vazão) são passados ao compilar cada maleta:
+        //   ./gradlew assembleComparativoRelease -PmaletaNome="M-003" ^
+        //       -PerroNominal=0.42 -PerroTransicao=0.40 -PerroMinima=0.55
         // Sem parâmetros, usa os valores de teste abaixo (desenvolvimento).
         val maletaNome = (project.findProperty("maletaNome") as String?) ?: "Maleta de Teste"
-        val erroPadrao = (project.findProperty("erroPadrao") as String?) ?: "0.5"
+        val erroNominal = (project.findProperty("erroNominal") as String?) ?: "0.5"
+        val erroTransicao = (project.findProperty("erroTransicao") as String?) ?: "0.4"
+        val erroMinima = (project.findProperty("erroMinima") as String?) ?: "0.6"
         buildConfigField("String", "MALETA_NOME", "\"$maletaNome\"")
-        buildConfigField("double", "ERRO_PADRAO", erroPadrao)
+        buildConfigField("double", "ERRO_PADRAO_NOMINAL", erroNominal)
+        buildConfigField("double", "ERRO_PADRAO_TRANSICAO", erroTransicao)
+        buildConfigField("double", "ERRO_PADRAO_MINIMA", erroMinima)
     }
 
     // === Tipo de ensaio (uma variante por tipo) ===
@@ -43,13 +48,13 @@ android {
             dimension = "tipoEnsaio"
             applicationIdSuffix = ".escoamento"
             buildConfigField("String", "TIPO_ENSAIO", "\"ESCOAMENTO_DIRETO\"")
-            resValue("string", "app_name", "SANIBLUE Escoamento")
+            resValue("string", "app_name", "Saniblue ED")
         }
         create("comparativo") {
             dimension = "tipoEnsaio"
             applicationIdSuffix = ".comparativo"
             buildConfigField("String", "TIPO_ENSAIO", "\"COMPARATIVO_LEITURA\"")
-            resValue("string", "app_name", "SANIBLUE Comparativo")
+            resValue("string", "app_name", "Saniblue CL")
         }
     }
 
