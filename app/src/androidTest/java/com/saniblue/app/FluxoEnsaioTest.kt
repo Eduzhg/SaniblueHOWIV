@@ -52,7 +52,7 @@ class FluxoEnsaioTest {
     /** Abre o Novo Ensaio pelo acesso rápido e garante formulário limpo. */
     private fun abrirNovoEnsaio() {
         compose.onAllNodesWithText("Novo Ensaio").onFirst().performClick()
-        aguardarTexto("Norma do Ensaio")
+        aguardarTexto("Dados Cadastrais")
         descartarRascunhoSePresente()
     }
 
@@ -84,7 +84,6 @@ class FluxoEnsaioTest {
         compose.onNodeWithText("Endereço *").performScrollTo().performTextInput("Rua Teste, 100")
         compose.onNodeWithText("Bairro *").performScrollTo().performTextInput("Centro")
         compose.onNodeWithText("Cidade *").performScrollTo().performTextInput("Blumenau")
-        compose.onNodeWithText("Temp. Água (°C) *").performScrollTo().performTextInput("20")
         compose.onNodeWithText("Técnico Responsável *").performScrollTo().performTextInput("Técnico UI")
         compose.onNodeWithText("Pressão Média (kg/cm²) *").performScrollTo().performTextInput("25")
     }
