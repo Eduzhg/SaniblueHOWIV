@@ -8,5 +8,5 @@
 #
 # Use PONTO decimal (nao virgula!). Sinal: POSITIVO diminui, NEGATIVO aumenta o volume.
 # Linhas comecando com # sao ignoradas. Edite os exemplos abaixo:
-comparativo,M-001,0.42,0.40,0.55
-escoamento,M-002,0.41,0.38,0.50
+comparativo,D25CN9000274,0.0,0.0,0.0
+# escoamento,D25CN9000274,0.0,0.0,0.0

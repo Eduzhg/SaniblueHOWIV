@@ -20,15 +20,16 @@ object DatabasePrePopulate {
         val p155 = NormaEnsaio.PORTARIA_155.name
 
         // Portaria 246: só 2 capacidades conhecidas hoje, identificadas pela 1ª letra
+        // (nome sempre em L/h — nunca m³/h, mesma convenção usada em toda a tela)
         val modelos246 = listOf(
             HidrometroModeloEntity(
-                nome = "Hidrômetro 1,5 m³/h (Y) — Portaria 246",
+                nome = "Hidrômetro 750 L/h (Y) — Portaria 246",
                 descricao = "1ª letra do nº de série: Y",
                 norma = p246, letra = "Y", classeR = "",
                 vazaoNominal = 750.0, vazaoTransicao = 60.0, vazaoMinima = 15.0
             ),
             HidrometroModeloEntity(
-                nome = "Hidrômetro 3,0 m³/h (A) — Portaria 246",
+                nome = "Hidrômetro 1500 L/h (A) — Portaria 246",
                 descricao = "1ª letra do nº de série: A",
                 norma = p246, letra = "A", classeR = "",
                 vazaoNominal = 1500.0, vazaoTransicao = 120.0, vazaoMinima = 60.0
@@ -67,7 +68,7 @@ object DatabasePrePopulate {
         val modelos155 = q3PorLetra.flatMap { cap ->
             limitesPorLetra.getValue(cap.letra).map { lim ->
                 HidrometroModeloEntity(
-                    nome = "Hidrômetro ${cap.vazaoNominal / 1000} m³/h (${cap.letra}) — ${lim.classe} — Portaria 155",
+                    nome = "Hidrômetro ${cap.vazaoNominal.toInt()} L/h (${cap.letra}) — ${lim.classe} — Portaria 155",
                     descricao = "1ª letra do nº de série: ${cap.letra} — classe ${lim.classe}",
                     norma = p155, letra = cap.letra, classeR = lim.classe,
                     vazaoNominal = cap.vazaoNominal,

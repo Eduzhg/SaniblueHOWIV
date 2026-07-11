@@ -25,11 +25,17 @@ data class VazaoEnsaio(
     val erro2: Double = 0.0,
     val erro3: Double = 0.0,
     val erroMedio: Double = 0.0,
-    val aprovado: Boolean = false
+    val aprovado: Boolean = false,
+    // Vazão de referência não atingida em campo (ex.: pressão insuficiente) — o
+    // técnico registra a vazão real utilizada no teste, para constar no laudo
+    val vazaoNaoAtingida: Boolean = false,
+    val vazaoUtilizada: Double = 0.0
 )
 
-enum class TipoVazao(val label: String) {
-    NOMINAL("Vazão Nominal"),
-    TRANSICAO("Vazão de Transição"),
-    MINIMA("Vazão Mínima")
+enum class TipoVazao(val label: String, val litrosEnsaio: Int) {
+    // Volume de água exigido por medição — fixo, independe do hidrômetro, da norma
+    // ou do método de ensaio.
+    NOMINAL("Vazão Nominal", litrosEnsaio = 10),
+    TRANSICAO("Vazão de Transição", litrosEnsaio = 5),
+    MINIMA("Vazão Mínima", litrosEnsaio = 2)
 }

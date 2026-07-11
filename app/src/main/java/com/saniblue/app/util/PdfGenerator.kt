@@ -127,6 +127,16 @@ class PdfGenerator @Inject constructor(private val context: Context) {
     // Dados cadastrais
     // ─────────────────────────────────────────────────────────────────
 
+    /** Formata "Hora Inicial - Hora Final (Duração)" a partir dos dígitos "HHmm", ou "-" se ausentes. */
+    private fun horarioEnsaioFormatado(ensaio: Ensaio): String {
+        fun String.comoHoraLegivel() = if (length == 4) "${take(2)}:${drop(2)}" else null
+        val ini = ensaio.horaInicial.comoHoraLegivel()
+        val fim = ensaio.horaFinal.comoHoraLegivel()
+        if (ini == null && fim == null) return "-"
+        val duracao = calcularDuracaoMin(ensaio.horaInicial, ensaio.horaFinal)?.let { " (${formatarDuracao(it)})" } ?: ""
+        return "${ini ?: "-"} às ${fim ?: "-"}$duracao"
+    }
+
     private fun drawSecaoDadosCadastrais(ensaio: Ensaio, modelo: HidrometroModelo) {
         drawTitulo("DADOS DO CLIENTE E DO ENSAIO")
 
@@ -141,6 +151,7 @@ class PdfGenerator @Inject constructor(private val context: Context) {
             "Cidade"        to ensaio.cidade.ifBlank { "-" },
             "Idade do Hidrômetro" to ensaio.idadeHidrometro.ifBlank { "-" },
             "Data do Ensaio" to ensaio.dataEnsaio,
+            "Horário" to horarioEnsaioFormatado(ensaio),
             "Pressão Média" to ensaio.pressaoMedia.let { if (it.isBlank()) "-" else "$it kg/cm²" },
             "Norma"         to ensaio.norma.descricao,
             "Método de Ensaio" to ensaio.metodoEnsaio.label
@@ -209,7 +220,7 @@ class PdfGenerator @Inject constructor(private val context: Context) {
         // ── Cabeçalho do bloco de vazão ────────────────────────
         canvas.drawRect(ML, y, PW - ML, y + 18f, fillPaint(C_AZUL_CLR))
         canvas.drawText(
-            "$nomeVazao   |   Referência: ${vazaoRef.toInt()} L/h   |   Limite aceitável: $limLabel",
+            "$nomeVazao   |   Referência: ${formatVazao(vazaoRef)} L/h   |   Limite aceitável: $limLabel",
             ML + 4f, y + 13f, textPaint(C_AZUL, 8.5f, bold = true)
         )
         y += 18f
@@ -301,6 +312,17 @@ class PdfGenerator @Inject constructor(private val context: Context) {
             textPaint(Color.rgb(21, 60, 120), 9f, bold = true)
         )
         y += 18f
+
+        // Vazão de referência não atingida em campo — vazão real registrada pelo técnico
+        if (vazao?.vazaoNaoAtingida == true) {
+            checkSpace(14f)
+            canvas.drawText(
+                "Obs.: vazão de referência não atingida em campo — vazão utilizada no teste: " +
+                    "${formatVazao(vazao.vazaoUtilizada)} L/h",
+                ML + 2f, y + 10f, textPaint(Color.rgb(140, 90, 20), 7.5f, bold = true)
+            )
+            y += 14f
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────

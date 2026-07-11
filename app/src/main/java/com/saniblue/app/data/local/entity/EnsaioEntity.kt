@@ -43,6 +43,10 @@ data class EnsaioEntity(
     @ColumnInfo("idade_hidrometro") val idadeHidrometro: String = "",
     @ColumnInfo("observacoes") val observacoes: String = "",
 
+    // Horário do ensaio (dígitos "HHmm") — opcional, usado para medir a duração
+    @ColumnInfo("hora_inicial") val horaInicial: String = "",
+    @ColumnInfo("hora_final") val horaFinal: String = "",
+
     // Nome da companhia de saneamento (ex.: "Samae - Blumenau (SC)")
     @ColumnInfo("nome_companhia") val nomeCompanhia: String = "",
 

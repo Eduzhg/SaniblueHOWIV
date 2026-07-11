@@ -13,6 +13,11 @@ data class Ensaio(
     val tecnicoResponsavel: String,
     val idadeHidrometro: String = "",
     val observacoes: String = "",
+    // Horário do ensaio (dígitos "HHmm") — opcional, para medir a duração dos testes.
+    // A inicial é preenchida automaticamente ao abrir o ensaio; a final, ao salvar.
+    // Ambas continuam editáveis manualmente.
+    val horaInicial: String = "",
+    val horaFinal: String = "",
     // Nome da companhia de saneamento (ex.: "Samae - Blumenau (SC)")
     val nomeCompanhia: String = "",
     // Norma e método usados no ensaio

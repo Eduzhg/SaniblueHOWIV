@@ -19,8 +19,9 @@ import org.junit.runner.RunWith
  * Testes de interface do fluxo principal do ensaio. Rodam num aparelho/emulador
  * real (gradlew connectedDebugAndroidTest), simulando toques e digitação.
  *
- * Cada teste é independente: entra pelo login (bypass de teste), abre o Novo
- * Ensaio e descarta o rascunho de execuções anteriores antes de começar.
+ * Cada teste é independente: entra pelo login (bypass de teste) e abre um Novo
+ * Ensaio, que sempre começa em branco (o rascunho contínuo vira uma linha real
+ * na Lista de Ensaios, não é restaurado automaticamente nesta tela).
  */
 @RunWith(AndroidJUnit4::class)
 class FluxoEnsaioTest {
@@ -49,29 +50,10 @@ class FluxoEnsaioTest {
         aguardarTexto("Novo Ensaio")
     }
 
-    /** Abre o Novo Ensaio pelo acesso rápido e garante formulário limpo. */
+    /** Abre o Novo Ensaio pelo acesso rápido — sempre começa em branco. */
     private fun abrirNovoEnsaio() {
         compose.onAllNodesWithText("Novo Ensaio").onFirst().performClick()
         aguardarTexto("Dados Cadastrais")
-        descartarRascunhoSePresente()
-    }
-
-    /**
-     * O rascunho automático de uma execução anterior é restaurado de forma
-     * assíncrona; espera um instante e, se o aviso aparecer, descarta.
-     */
-    private fun descartarRascunhoSePresente() {
-        runCatching {
-            compose.waitUntil(2_000) {
-                compose.onAllNodesWithText("Descartar")
-                    .fetchSemanticsNodes(atLeastOneRootRequired = false)
-                    .isNotEmpty()
-            }
-        }
-        if (compose.onAllNodesWithText("Descartar").fetchSemanticsNodes().isNotEmpty()) {
-            compose.onAllNodesWithText("Descartar").onFirst().performClick()
-        }
-        compose.waitForIdle()
     }
 
     /** Preenche todos os campos obrigatórios do cadastro (a Data já vem com a data atual). */
@@ -79,7 +61,7 @@ class FluxoEnsaioTest {
         // O nº de série também preenche a idade do hidrômetro automaticamente
         compose.onNodeWithText("Nº Hidrômetro *").performScrollTo().performTextInput("Y20B123456")
         compose.onNodeWithText("Nome da Companhia *").performScrollTo().performTextInput("Companhia Teste")
-        compose.onNodeWithText("Matrícula *").performScrollTo().performTextInput("12345")
+        compose.onNodeWithText("Matrícula/ID/CPF *").performScrollTo().performTextInput("12345")
         compose.onNodeWithText("Cliente *").performScrollTo().performTextInput("Cliente Teste UI")
         compose.onNodeWithText("Endereço *").performScrollTo().performTextInput("Rua Teste, 100")
         compose.onNodeWithText("Bairro *").performScrollTo().performTextInput("Centro")

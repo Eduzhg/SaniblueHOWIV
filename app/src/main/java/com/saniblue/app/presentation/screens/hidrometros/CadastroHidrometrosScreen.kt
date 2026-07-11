@@ -32,6 +32,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.saniblue.app.domain.model.HidrometroModelo
 import com.saniblue.app.domain.model.NormaEnsaio
 import com.saniblue.app.presentation.theme.SaniblueBlue
+import com.saniblue.app.util.formatVazao
 
 /**
  * Consulta do catálogo fixo de capacidades de hidrômetro (norma + letra + classe R).
@@ -103,26 +104,13 @@ private fun ModeloCard(modelo: HidrometroModelo) {
             val labelNominal = if (modelo.norma == NormaEnsaio.PORTARIA_155) "Q3" else "QN"
             val labelTransicao = if (modelo.norma == NormaEnsaio.PORTARIA_155) "Q2" else "QT"
             val labelMinima = if (modelo.norma == NormaEnsaio.PORTARIA_155) "Q1" else "QM"
-            // Convenção da tabela de referência: Q3/QN da Portaria 155 é em m³/h;
-            // as demais vazões (e a Portaria 246 inteira) são em L/h.
-            val textoNominal = if (modelo.norma == NormaEnsaio.PORTARIA_155) {
-                "$labelNominal: ${formatM3h(modelo.vazaoNominal)} m³/h"
-            } else {
-                "$labelNominal: ${modelo.vazaoNominal.toInt()} L/h"
-            }
             Text(
-                text = "$textoNominal  •  " +
-                    "$labelTransicao: ${modelo.vazaoTransicao.toInt()} L/h  •  " +
-                    "$labelMinima: ${modelo.vazaoMinima.toInt()} L/h",
+                text = "$labelNominal: ${formatVazao(modelo.vazaoNominal)} L/h  •  " +
+                    "$labelTransicao: ${formatVazao(modelo.vazaoTransicao)} L/h  •  " +
+                    "$labelMinima: ${formatVazao(modelo.vazaoMinima)} L/h",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
-}
-
-/** Converte L/h para m³/h, sem casas decimais desnecessárias (ex.: 1600.0 → "1.6", 1000.0 → "1"). */
-private fun formatM3h(litrosPorHora: Double): String {
-    val s = "%.3f".format(litrosPorHora / 1000.0)
-    return s.trimEnd('0').trimEnd('.')
 }

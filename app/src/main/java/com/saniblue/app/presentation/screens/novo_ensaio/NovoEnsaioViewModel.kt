@@ -11,10 +11,6 @@ import com.saniblue.app.domain.model.NormaEnsaio
 import com.saniblue.app.domain.model.ResultadoFinal
 import com.saniblue.app.domain.model.TipoVazao
 import com.saniblue.app.domain.model.VazaoEnsaio
-import com.saniblue.app.data.local.datastore.RascunhoEnsaio
-import com.saniblue.app.data.local.datastore.RascunhoEnsaioStore
-import com.saniblue.app.data.local.datastore.RascunhoMedicao
-import com.saniblue.app.data.local.datastore.RascunhoVazao
 import com.saniblue.app.domain.repository.EnsaioRepository
 import com.saniblue.app.domain.repository.HidrometroRepository
 import com.saniblue.app.domain.session.SessaoTecnico
@@ -23,6 +19,7 @@ import com.saniblue.app.domain.usecase.CalcularIdadeHidrometroUseCase
 import com.saniblue.app.domain.usecase.SaveEnsaioUseCase
 import com.saniblue.app.util.filtrarDecimal
 import com.saniblue.app.util.filtrarSerialHidrometro
+import com.saniblue.app.util.horaAtualDigits
 import com.saniblue.app.util.isLetraCapacidadeConhecida
 import com.saniblue.app.util.isSerialHidrometroValido
 import com.saniblue.app.util.normaDoSerial
@@ -58,7 +55,9 @@ data class MedicaoState(
     // técnico já confirmou que a leitura final < inicial (hidrômetro em teste) está correta
     val leituraFinalMenorConfirmada: Boolean = false,
     // técnico já confirmou que o padrão final < inicial (padrão ultrassônico) está correto
-    val padraoFinalMenorConfirmada: Boolean = false
+    val padraoFinalMenorConfirmada: Boolean = false,
+    // técnico já confirmou que o padrão inicial (menor que o final anterior) está correto
+    val padraoInicialConfirmada: Boolean = false
 )
 
 enum class TipoAlertaLeitura { ERRO_ALTO, LEITURA_RETROCEDIDA, FINAL_MENOR_INICIAL }
@@ -98,7 +97,10 @@ data class VazaoState(
     val m2: MedicaoState = MedicaoState(),
     val m3: MedicaoState = MedicaoState(),
     val erroMedio: Double? = null,
-    val aprovado: Boolean? = null
+    val aprovado: Boolean? = null,
+    // Vazão de referência não atingida em campo — técnico registra a vazão real usada
+    val vazaoNaoAtingida: Boolean = false,
+    val vazaoUtilizada: String = ""
 )
 
 data class NovoEnsaioUiState(
@@ -114,6 +116,10 @@ data class NovoEnsaioUiState(
     val tecnicoResponsavel: String = "",
     val idadeHidrometro: String = "",
     val observacoes: String = "",
+    // Horário do ensaio (dígitos "HHmm") — opcional. Inicial vem do relógio do
+    // aparelho ao abrir o ensaio; final, ao salvar. Ambas continuam editáveis.
+    val horaInicial: String = "",
+    val horaFinal: String = "",
 
     // Norma (selecionável no ensaio) e método/maleta (vêm do login — só leitura)
     val norma: NormaEnsaio = NormaEnsaio.PORTARIA_246,
@@ -135,9 +141,6 @@ data class NovoEnsaioUiState(
 
     // Alerta de leitura suspeita
     val alertaLeitura: AlertaLeitura? = null,
-
-    // Rascunho restaurado de uma sessão anterior (mostra aviso ao técnico)
-    val rascunhoRestaurado: Boolean = false,
 
     // Modelo do hidrômetro — resolvido automaticamente pelo nº de série (norma + letra
     // + classe R quando aplicável), nunca escolhido manualmente
@@ -201,8 +204,7 @@ class NovoEnsaioViewModel @Inject constructor(
     private val hidrometroRepository: HidrometroRepository,
     private val calcularErro: CalcularErroUseCase,
     private val calcularIdade: CalcularIdadeHidrometroUseCase,
-    private val sessao: SessaoTecnico,
-    private val rascunhoStore: RascunhoEnsaioStore
+    private val sessao: SessaoTecnico
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
@@ -214,13 +216,19 @@ class NovoEnsaioViewModel @Inject constructor(
             erroPadraoTransicao = sessao.maleta.erroPadraoTransicao,
             erroPadraoMinima = sessao.maleta.erroPadraoMinima,
             // Data do ensaio já vem com a data atual (editável)
-            dataEnsaio = dataAtualDigits()
+            dataEnsaio = dataAtualDigits(),
+            // Hora inicial já vem do relógio do aparelho ao abrir o ensaio (editável)
+            horaInicial = horaAtualDigits()
         )
     )
     val uiState: StateFlow<NovoEnsaioUiState> = _uiState.asStateFlow()
 
-    // 0 = novo ensaio (autosave/restauração de rascunho ativos); >0 = edição
-    private var ensaioIdAtual: Long = 0L
+    /**
+     * Id real do ensaio no banco, mantido em dia enquanto o técnico preenche o
+     * formulário (rascunho contínuo — ver [autoSalvarRascunho]). 0L até a primeira
+     * gravação de um ensaio novo; para edição/continuação, já vem preenchido.
+     */
+    private var rascunhoDbId: Long = 0L
 
     companion object {
         // Acima deste erro (%) a leitura é considerada suspeita (provável erro de
@@ -233,30 +241,37 @@ class NovoEnsaioViewModel @Inject constructor(
     }
 
     init {
-        // Autosave do rascunho (com debounce) enquanto for um novo ensaio
+        // Grava o ensaio em andamento como um registro real na lista de ensaios
+        // (não um rascunho separado) assim que houver um modelo resolvido — se o
+        // app fechar/morrer no meio do teste, o técnico o encontra pendente na
+        // Lista de Ensaios e continua de onde parou (Editar), sem risco de perder
+        // 1h de medições atrás de um popup de "recuperar rascunho".
         viewModelScope.launch {
             uiState.debounce(500).collect { s ->
-                if (ensaioIdAtual == 0L && !s.isSaved && temAlgumDado(s)) {
-                    runCatching { rascunhoStore.salvar(paraRascunho(s)) }
-                }
+                if (!s.isSaved) autoSalvarRascunho(s)
             }
         }
     }
 
-    /** Chamado pela tela ao abrir. id != 0 → edição; id == 0 → novo (restaura rascunho). */
+    /** Chamado pela tela ao abrir. id != 0 → edição ou continuação de um ensaio pendente. */
     fun iniciar(ensaioId: Long) {
-        ensaioIdAtual = ensaioId
-        if (ensaioId != 0L) {
-            carregarEnsaio(ensaioId)
-        } else {
-            restaurarRascunho()
-        }
+        rascunhoDbId = ensaioId
+        if (ensaioId != 0L) carregarEnsaio(ensaioId)
     }
 
-    private fun restaurarRascunho() {
+    /**
+     * Upsert silencioso do ensaio em andamento na tabela real de ensaios. Reaproveita
+     * [rascunhoDbId] para atualizar sempre a mesma linha (nunca duplica). Só grava
+     * quando há um modelo resolvido — o hidrômetro do ensaio é uma referência
+     * obrigatória no banco (FK), então não há como gravar antes disso.
+     */
+    private fun autoSalvarRascunho(state: NovoEnsaioUiState) {
+        if (state.modeloSelecionado == null) return
+        if (!temAlgumDado(state)) return
         viewModelScope.launch {
-            val rascunho = runCatching { rascunhoStore.ler() }.getOrNull() ?: return@launch
-            aplicarRascunho(rascunho)
+            val ensaio = construirEnsaio(state, rascunhoDbId)
+            runCatching { ensaioRepository.save(ensaio) }
+                .onSuccess { novoId -> rascunhoDbId = novoId }
         }
     }
 
@@ -280,6 +295,8 @@ class NovoEnsaioViewModel @Inject constructor(
                 tecnicoResponsavel = ensaio.tecnicoResponsavel,
                 idadeHidrometro = ensaio.idadeHidrometro,
                 observacoes = ensaio.observacoes,
+                horaInicial = ensaio.horaInicial,
+                horaFinal = ensaio.horaFinal,
                 norma = ensaio.norma,
                 metodoEnsaio = ensaio.metodoEnsaio,
                 maletaNome = ensaio.maletaNome.ifBlank { sessao.maleta.nome },
@@ -338,7 +355,9 @@ class NovoEnsaioViewModel @Inject constructor(
             erro = erro3
         ),
         erroMedio = erroMedio,
-        aprovado = aprovado
+        aprovado = aprovado,
+        vazaoNaoAtingida = vazaoNaoAtingida,
+        vazaoUtilizada = vazaoUtilizada.toEditString()
     )
 
     private fun Double.toEditString() = if (this == 0.0) "" else this.toString()
@@ -369,6 +388,16 @@ class NovoEnsaioViewModel @Inject constructor(
     fun updateIdadeHidrometro(v: String) = update { copy(idadeHidrometro = v) }
     fun updateObservacoes(v: String) = update { copy(observacoes = v) }
     fun updatePressaoMedia(v: String) = update { copy(pressaoMedia = v.filtrarDecimal()) }
+
+    // Estado armazena só os 4 dígitos (ex: "0835"); a máscara HH:MM é visual
+    fun updateHoraInicial(v: String) {
+        val digits = v.filter { it.isDigit() }.take(4)
+        update { copy(horaInicial = digits) }
+    }
+    fun updateHoraFinal(v: String) {
+        val digits = v.filter { it.isDigit() }.take(4)
+        update { copy(horaFinal = digits) }
+    }
 
     // Ensaio não realizado
     fun setRealizado(realizado: Boolean) {
@@ -435,7 +464,9 @@ class NovoEnsaioViewModel @Inject constructor(
             val atual = vs.medicao(alerta.indice)
             val m = when (alerta.tipoAlerta) {
                 TipoAlertaLeitura.ERRO_ALTO -> atual.copy(altoErroConfirmado = true)
-                TipoAlertaLeitura.LEITURA_RETROCEDIDA -> atual.copy(leituraInicialConfirmada = true)
+                TipoAlertaLeitura.LEITURA_RETROCEDIDA ->
+                    if (alerta.ehPadrao) atual.copy(padraoInicialConfirmada = true)
+                    else atual.copy(leituraInicialConfirmada = true)
                 TipoAlertaLeitura.FINAL_MENOR_INICIAL ->
                     if (alerta.ehPadrao) atual.copy(padraoFinalMenorConfirmada = true)
                     else atual.copy(leituraFinalMenorConfirmada = true)
@@ -453,6 +484,20 @@ class NovoEnsaioViewModel @Inject constructor(
     fun selectClasseR(classe: ClasseHidrometro) {
         update { copy(classeR = classe) }
         resolverModeloAutomatico()
+    }
+
+    /**
+     * Marca que a vazão de referência não foi atingida em campo (ex.: pressão
+     * insuficiente) — não afeta o cálculo de aprovação, só documenta no laudo.
+     * Desligar o aviso limpa a vazão utilizada digitada.
+     */
+    fun setVazaoNaoAtingida(tipo: TipoVazao, naoAtingida: Boolean) = update {
+        val vs = vazao(tipo)
+        withVazao(tipo, vs.copy(vazaoNaoAtingida = naoAtingida, vazaoUtilizada = if (naoAtingida) vs.vazaoUtilizada else ""))
+    }
+
+    fun updateVazaoUtilizada(tipo: TipoVazao, v: String) = update {
+        withVazao(tipo, vazao(tipo).copy(vazaoUtilizada = v.filtrarDecimal(3)))
     }
 
     /**
@@ -526,11 +571,35 @@ class NovoEnsaioViewModel @Inject constructor(
                 altoErroConfirmado = false,
                 leituraInicialConfirmada = false,
                 leituraFinalMenorConfirmada = false,
-                padraoFinalMenorConfirmada = false
+                padraoFinalMenorConfirmada = false,
+                padraoInicialConfirmada = false
             )
             withVazao(tipo, vs.withMedicao(indice, novo))
         }
         recalcularVazao(tipo)
+    }
+
+    /**
+     * Pré-preenche a leitura inicial (e o padrão inicial) da próxima medição desta mesma
+     * vazão com a leitura final desta — chamado quando o técnico sai do campo "Leitura
+     * Final"/"Padrão Final" (blur), nunca a cada dígito digitado. Só preenche se a próxima
+     * ainda estiver em branco, nunca sobrescreve o que o técnico já digitou. A Medição 1
+     * nunca recebe essa cópia: a vazão precisa ser regulada manualmente a cada novo teste.
+     */
+    fun preencherProximaLeituraInicial(tipo: TipoVazao, indice: Int) {
+        if (indice >= 3) return
+        update {
+            val vs = vazao(tipo)
+            val atual = vs.medicao(indice)
+            val proxima = vs.medicao(indice + 1)
+            val proximaAtualizada = proxima.copy(
+                leituraInicial = if (proxima.leituraInicial.isBlank() && atual.leituraFinal.isNotBlank())
+                    atual.leituraFinal else proxima.leituraInicial,
+                padraoInicial = if (proxima.padraoInicial.isBlank() && atual.padraoFinal.isNotBlank())
+                    atual.padraoFinal else proxima.padraoInicial
+            )
+            withVazao(tipo, vs.withMedicao(indice + 1, proximaAtualizada))
+        }
     }
 
     private fun recalcularVazao(tipo: TipoVazao) {
@@ -641,6 +710,30 @@ class NovoEnsaioViewModel @Inject constructor(
         if (atual < final) {
             update {
                 copy(alertaLeitura = AlertaLeitura(tipo, indice, TipoAlertaLeitura.LEITURA_RETROCEDIDA, leituraAnterior = final))
+            }
+        }
+    }
+
+    /**
+     * Igual a [verificarLeituraInicialSuspeita], mas para o padrão ultrassônico da
+     * maleta (método comparativo): a leitura inicial do padrão nesta medição não pode
+     * ser menor que a leitura final do padrão na medição anterior da sequência.
+     */
+    fun verificarPadraoInicialSuspeita(tipo: TipoVazao, indice: Int) {
+        if (_uiState.value.alertaLeitura != null) return
+        val s = _uiState.value
+        val m = s.vazao(tipo).medicao(indice)
+        if (m.padraoInicialConfirmada) return
+        val (tipoAnt, indiceAnt) = medicaoAnterior(tipo, indice) ?: return
+        val anterior = s.vazao(tipoAnt).medicao(indiceAnt)
+        val atual = m.padraoInicial.toDoubleLocale() ?: return
+        val final = anterior.padraoFinal.toDoubleLocale() ?: return
+        if (atual < final) {
+            update {
+                copy(alertaLeitura = AlertaLeitura(
+                    tipo, indice, TipoAlertaLeitura.LEITURA_RETROCEDIDA,
+                    leituraAnterior = final, ehPadrao = true
+                ))
             }
         }
     }
@@ -793,45 +886,21 @@ class NovoEnsaioViewModel @Inject constructor(
                 withContext(Dispatchers.IO) { resolverFotoPath(state) }
             } else ""
 
-            val ensaio = Ensaio(
-                id = ensaioId,
-                hidrometroModeloId = state.modeloSelecionadoId,
-                numeroHidrometro = state.numeroHidrometro,
-                cliente = state.cliente,
-                nomeCompanhia = state.nomeCompanhia,
-                matricula = state.matricula,
-                endereco = state.endereco,
-                cidade = state.cidade,
-                bairro = state.bairro,
-                dataEnsaio = formatarData(state.dataEnsaio),
-                tecnicoResponsavel = state.tecnicoResponsavel,
-                idadeHidrometro = state.idadeHidrometro,
-                observacoes = state.observacoes,
-                norma = state.norma,
-                metodoEnsaio = state.metodoEnsaio,
-                maletaNome = state.maletaNome,
-                erroPadraoNominal = state.erroPadraoNominal,
-                erroPadraoTransicao = state.erroPadraoTransicao,
-                erroPadraoMinima = state.erroPadraoMinima,
-                pressaoMedia = state.pressaoMedia,
-                realizado = state.realizado,
-                motivoNaoRealizado = if (state.realizado) "" else state.motivoNaoRealizado,
-                fotoPath = fotoPath,
-                leituraFinalReprovado = state.leituraFinalReprovado,
-                numeroSerieNovo = state.numeroSerieNovo,
-                leituraInicialNovo = state.leituraInicialNovo,
-                clienteAcompanhou = state.clienteAcompanhou,
-                clienteRecusouDados = state.clienteRecusouDados,
-                acompanhanteNome = state.acompanhanteNome,
-                acompanhanteDocumento = state.acompanhanteDocumento,
-                acompanhanteTelefone = state.acompanhanteTelefone,
-                vazoes = if (state.realizado) buildVazoes(state) else emptyList(),
-                resultadoFinal = state.resultadoFinal
-            )
+            // Hora final: preenche automaticamente com o horário atual do aparelho se o
+            // técnico ainda não tiver editado o campo manualmente
+            val estadoFinal = if (state.horaFinal.isBlank()) {
+                val horaFinal = horaAtualDigits()
+                update { copy(horaFinal = horaFinal) }
+                state.copy(horaFinal = horaFinal)
+            } else state
+
+            // Reaproveita o mesmo id do rascunho contínuo (se houver) — nunca duplica a linha
+            val idFinal = if (rascunhoDbId != 0L) rascunhoDbId else ensaioId
+            val ensaio = construirEnsaio(estadoFinal, idFinal, fotoPath)
 
             saveEnsaio(ensaio).fold(
                 onSuccess = { id ->
-                    runCatching { rascunhoStore.limpar() }
+                    rascunhoDbId = id
                     update { copy(isLoading = false, isSaved = true, savedId = id) }
                 },
                 onFailure = { e ->
@@ -840,6 +909,45 @@ class NovoEnsaioViewModel @Inject constructor(
             )
         }
     }
+
+    /** Monta o [Ensaio] a partir do estado atual — usado tanto pelo salvar final quanto pelo autosave. */
+    private fun construirEnsaio(state: NovoEnsaioUiState, id: Long, fotoPath: String = state.fotoPath): Ensaio = Ensaio(
+        id = id,
+        hidrometroModeloId = state.modeloSelecionadoId,
+        numeroHidrometro = state.numeroHidrometro,
+        cliente = state.cliente,
+        nomeCompanhia = state.nomeCompanhia,
+        matricula = state.matricula,
+        endereco = state.endereco,
+        cidade = state.cidade,
+        bairro = state.bairro,
+        dataEnsaio = formatarData(state.dataEnsaio),
+        tecnicoResponsavel = state.tecnicoResponsavel,
+        idadeHidrometro = state.idadeHidrometro,
+        observacoes = state.observacoes,
+        horaInicial = state.horaInicial,
+        horaFinal = state.horaFinal,
+        norma = state.norma,
+        metodoEnsaio = state.metodoEnsaio,
+        maletaNome = state.maletaNome,
+        erroPadraoNominal = state.erroPadraoNominal,
+        erroPadraoTransicao = state.erroPadraoTransicao,
+        erroPadraoMinima = state.erroPadraoMinima,
+        pressaoMedia = state.pressaoMedia,
+        realizado = state.realizado,
+        motivoNaoRealizado = if (state.realizado) "" else state.motivoNaoRealizado,
+        fotoPath = fotoPath,
+        leituraFinalReprovado = state.leituraFinalReprovado,
+        numeroSerieNovo = state.numeroSerieNovo,
+        leituraInicialNovo = state.leituraInicialNovo,
+        clienteAcompanhou = state.clienteAcompanhou,
+        clienteRecusouDados = state.clienteRecusouDados,
+        acompanhanteNome = state.acompanhanteNome,
+        acompanhanteDocumento = state.acompanhanteDocumento,
+        acompanhanteTelefone = state.acompanhanteTelefone,
+        vazoes = if (state.realizado) buildVazoes(state) else emptyList(),
+        resultadoFinal = state.resultadoFinal
+    )
 
     private fun buildVazoes(state: NovoEnsaioUiState): List<VazaoEnsaio> {
         fun String.d() = toDoubleLocale() ?: 0.0
@@ -864,7 +972,9 @@ class NovoEnsaioViewModel @Inject constructor(
             erro2    = vs.m2.erro ?: 0.0,
             erro3    = vs.m3.erro ?: 0.0,
             erroMedio = vs.erroMedio ?: 0.0,
-            aprovado  = vs.aprovado ?: false
+            aprovado  = vs.aprovado ?: false,
+            vazaoNaoAtingida = vs.vazaoNaoAtingida,
+            vazaoUtilizada = vs.vazaoUtilizada.d()
         )
         return listOf(
             toVazao(TipoVazao.NOMINAL, state.nominal),
@@ -945,25 +1055,7 @@ class NovoEnsaioViewModel @Inject constructor(
         return "${digits.take(2)}/${digits.drop(2).take(2)}/${digits.drop(4)}"
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // Rascunho (autosave) — serialização dos campos editáveis em JSON
-    // ─────────────────────────────────────────────────────────────────
-
-    /** Descarta o rascunho atual e limpa o formulário. */
-    fun descartarRascunho() {
-        viewModelScope.launch { runCatching { rascunhoStore.limpar() } }
-        _uiState.value = NovoEnsaioUiState(
-            metodoEnsaio = sessao.metodoEnsaio,
-            maletaNome = sessao.maleta.nome,
-            erroPadraoNominal = sessao.maleta.erroPadraoNominal,
-            erroPadraoTransicao = sessao.maleta.erroPadraoTransicao,
-            erroPadraoMinima = sessao.maleta.erroPadraoMinima,
-            dataEnsaio = dataAtualDigits()
-        )
-    }
-
-    fun dispensarAvisoRascunho() = update { copy(rascunhoRestaurado = false) }
-
+    /** Há dados suficientes no formulário para valer a pena gravar o rascunho contínuo. */
     private fun temAlgumDado(s: NovoEnsaioUiState): Boolean {
         if (s.numeroHidrometro.isNotBlank() || s.cliente.isNotBlank() ||
             s.matricula.isNotBlank() || s.nomeCompanhia.isNotBlank() ||
@@ -975,97 +1067,6 @@ class NovoEnsaioViewModel @Inject constructor(
                     it.leituraFinal.isNotBlank() || it.padraoInicial.isNotBlank() ||
                     it.padraoFinal.isNotBlank()
             }
-        }
-    }
-
-    private fun paraRascunho(s: NovoEnsaioUiState): RascunhoEnsaio {
-        fun med(m: MedicaoState) = RascunhoMedicao(
-            escoamento = m.escoamento,
-            leituraInicial = m.leituraInicial,
-            leituraFinal = m.leituraFinal,
-            padraoInicial = m.padraoInicial,
-            padraoFinal = m.padraoFinal
-        )
-        fun vaz(v: VazaoState) = RascunhoVazao(med(v.m1), med(v.m2), med(v.m3))
-        return RascunhoEnsaio(
-            numeroHidrometro = s.numeroHidrometro,
-            cliente = s.cliente,
-            nomeCompanhia = s.nomeCompanhia,
-            matricula = s.matricula,
-            endereco = s.endereco,
-            cidade = s.cidade,
-            bairro = s.bairro,
-            dataEnsaio = s.dataEnsaio,
-            tecnicoResponsavel = s.tecnicoResponsavel,
-            idadeHidrometro = s.idadeHidrometro,
-            pressaoMedia = s.pressaoMedia,
-            observacoes = s.observacoes,
-            norma = s.norma.name,
-            modeloSelecionadoId = s.modeloSelecionadoId,
-            realizado = s.realizado,
-            motivoNaoRealizado = s.motivoNaoRealizado,
-            leituraFinalReprovado = s.leituraFinalReprovado,
-            numeroSerieNovo = s.numeroSerieNovo,
-            leituraInicialNovo = s.leituraInicialNovo,
-            clienteAcompanhou = s.clienteAcompanhou,
-            clienteRecusouDados = s.clienteRecusouDados,
-            acompanhanteNome = s.acompanhanteNome,
-            acompanhanteDocumento = s.acompanhanteDocumento,
-            acompanhanteTelefone = s.acompanhanteTelefone,
-            nominal = vaz(s.nominal),
-            transicao = vaz(s.transicao),
-            minima = vaz(s.minima)
-        )
-    }
-
-    private fun aplicarRascunho(r: RascunhoEnsaio) {
-        fun med(m: RascunhoMedicao) = MedicaoState(
-            escoamento = m.escoamento,
-            leituraInicial = m.leituraInicial,
-            leituraFinal = m.leituraFinal,
-            padraoInicial = m.padraoInicial,
-            padraoFinal = m.padraoFinal
-        )
-        fun vaz(v: RascunhoVazao) = VazaoState(med(v.m1), med(v.m2), med(v.m3))
-        val modeloId = r.modeloSelecionadoId.takeIf { it != 0L } ?: _uiState.value.modeloSelecionadoId
-        update {
-            copy(
-                numeroHidrometro = r.numeroHidrometro,
-                cliente = r.cliente,
-                nomeCompanhia = r.nomeCompanhia,
-                matricula = r.matricula,
-                endereco = r.endereco,
-                cidade = r.cidade,
-                bairro = r.bairro,
-                // Rascunho antigo sem data → mantém a data atual pré-preenchida
-                dataEnsaio = r.dataEnsaio.ifBlank { dataEnsaio },
-                tecnicoResponsavel = r.tecnicoResponsavel,
-                idadeHidrometro = r.idadeHidrometro,
-                pressaoMedia = r.pressaoMedia,
-                observacoes = r.observacoes,
-                norma = runCatching { NormaEnsaio.valueOf(r.norma) }.getOrDefault(norma),
-                modeloSelecionadoId = modeloId,
-                realizado = r.realizado,
-                motivoNaoRealizado = r.motivoNaoRealizado,
-                leituraFinalReprovado = r.leituraFinalReprovado,
-                numeroSerieNovo = r.numeroSerieNovo,
-                leituraInicialNovo = r.leituraInicialNovo,
-                clienteAcompanhou = r.clienteAcompanhou,
-                clienteRecusouDados = r.clienteRecusouDados,
-                acompanhanteNome = r.acompanhanteNome,
-                acompanhanteDocumento = r.acompanhanteDocumento,
-                acompanhanteTelefone = r.acompanhanteTelefone,
-                nominal = vaz(r.nominal),
-                transicao = vaz(r.transicao),
-                minima = vaz(r.minima),
-                rascunhoRestaurado = true
-            )
-        }
-        // Resolve o objeto do modelo a partir do id e recalcula tudo
-        viewModelScope.launch {
-            val modelo = hidrometroRepository.getById(modeloId)
-            if (modelo != null) update { copy(modeloSelecionado = modelo, classeR = modelo.classeR) }
-            recalcularTudo()
         }
     }
 

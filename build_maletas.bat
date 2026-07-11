@@ -39,7 +39,7 @@ for /f "usebackq tokens=1-5 delims=," %%A in ("maletas.csv") do (
             echo ==========================================================
             echo  Gerando: !FLAVOR!  ^|  Maleta !NOME!  ^|  Erros N=!ERRN! T=!ERRT! M=!ERRM!
             echo ==========================================================
-            call gradlew.bat !TASK! -PmaletaNome="!NOME!" -PerroNominal=!ERRN! -PerroTransicao=!ERRT! -PerroMinima=!ERRM!
+            call "%~dp0gradlew.bat" !TASK! -PmaletaNome="!NOME!" -PerroNominal=!ERRN! -PerroTransicao=!ERRT! -PerroMinima=!ERRM!
             if errorlevel 1 (
                 echo [ERRO] Falha ao gerar a maleta !NOME!. Abortando.
                 exit /b 1

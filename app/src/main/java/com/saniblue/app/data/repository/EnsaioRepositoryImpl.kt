@@ -93,6 +93,8 @@ class EnsaioRepositoryImpl @Inject constructor(
         tecnicoResponsavel = tecnicoResponsavel,
         idadeHidrometro = idadeHidrometro,
         observacoes = observacoes,
+        horaInicial = horaInicial,
+        horaFinal = horaFinal,
         nomeCompanhia = nomeCompanhia,
         norma = runCatching { NormaEnsaio.valueOf(norma) }.getOrDefault(NormaEnsaio.PORTARIA_246),
         metodoEnsaio = runCatching { MetodoEnsaio.valueOf(metodoEnsaio) }.getOrDefault(MetodoEnsaio.ESCOAMENTO_DIRETO),
@@ -131,6 +133,8 @@ class EnsaioRepositoryImpl @Inject constructor(
         tecnicoResponsavel = tecnicoResponsavel,
         idadeHidrometro = idadeHidrometro,
         observacoes = observacoes,
+        horaInicial = horaInicial,
+        horaFinal = horaFinal,
         nomeCompanhia = nomeCompanhia,
         norma = norma.name,
         metodoEnsaio = metodoEnsaio.name,
@@ -175,7 +179,9 @@ class EnsaioRepositoryImpl @Inject constructor(
         erro2 = erro2,
         erro3 = erro3,
         erroMedio = erroMedio,
-        aprovado = aprovado
+        aprovado = aprovado,
+        vazaoNaoAtingida = vazaoNaoAtingida,
+        vazaoUtilizada = vazaoUtilizada
     )
 
     private fun VazaoEnsaio.toEntity(ensaioId: Long) = VazaoEnsaioEntity(
@@ -201,6 +207,8 @@ class EnsaioRepositoryImpl @Inject constructor(
         erro2 = erro2,
         erro3 = erro3,
         erroMedio = erroMedio,
-        aprovado = aprovado
+        aprovado = aprovado,
+        vazaoNaoAtingida = vazaoNaoAtingida,
+        vazaoUtilizada = vazaoUtilizada
     )
 }

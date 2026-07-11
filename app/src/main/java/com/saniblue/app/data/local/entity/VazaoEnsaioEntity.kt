@@ -55,5 +55,9 @@ data class VazaoEnsaioEntity(
     @ColumnInfo("erro_2") val erro2: Double = 0.0,
     @ColumnInfo("erro_3") val erro3: Double = 0.0,
     @ColumnInfo("erro_medio") val erroMedio: Double = 0.0,
-    @ColumnInfo("aprovado") val aprovado: Boolean = false
+    @ColumnInfo("aprovado") val aprovado: Boolean = false,
+
+    // Vazão de referência não atingida em campo — vazão real registrada pelo técnico
+    @ColumnInfo("vazao_nao_atingida") val vazaoNaoAtingida: Boolean = false,
+    @ColumnInfo("vazao_utilizada") val vazaoUtilizada: Double = 0.0
 )

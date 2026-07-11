@@ -96,6 +96,9 @@ import com.saniblue.app.presentation.theme.PendenteOrangeContainer
 import com.saniblue.app.presentation.theme.ReprovadoRed
 import com.saniblue.app.presentation.theme.ReprovadoRedContainer
 import com.saniblue.app.presentation.theme.SaniblueBlue
+import com.saniblue.app.util.calcularDuracaoMin
+import com.saniblue.app.util.formatVazao
+import com.saniblue.app.util.formatarDuracao
 
 private val PASSOS = listOf("Cadastro", "Nominal", "Transição", "Mínima", "Resultado")
 
@@ -189,11 +192,14 @@ fun NovoEnsaioScreen(
                             "${"%.3f".format(alerta.erroPct)}%, fora do esperado. " +
                             "Confira se os valores digitados estão corretos."
                     )
-                    TipoAlertaLeitura.LEITURA_RETROCEDIDA -> Text(
-                        "A leitura inicial da medição ${alerta.indice} é menor que a leitura final " +
-                            "anterior (${"%.3f".format(alerta.leituraAnterior)}). O hidrômetro não retrocede — " +
-                            "confira se os valores digitados estão corretos."
-                    )
+                    TipoAlertaLeitura.LEITURA_RETROCEDIDA -> {
+                        val quem = if (alerta.ehPadrao) "do padrão ultrassônico" else "do hidrômetro em teste"
+                        Text(
+                            "A leitura inicial $quem na medição ${alerta.indice} é menor que a leitura final " +
+                                "anterior (${"%.3f".format(alerta.leituraAnterior)}). A leitura não retrocede — " +
+                                "confira se os valores digitados estão corretos."
+                        )
+                    }
                     TipoAlertaLeitura.FINAL_MENOR_INICIAL -> {
                         val quem = if (alerta.ehPadrao) "do padrão ultrassônico" else "do hidrômetro em teste"
                         Text(
@@ -383,31 +389,6 @@ private fun PassoCadastro(uiState: NovoEnsaioUiState, viewModel: NovoEnsaioViewM
             .padding(horizontal = 16.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // === AVISO DE RASCUNHO RESTAURADO ===
-        if (uiState.rascunhoRestaurado) {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = PendenteOrangeContainer),
-                elevation = CardDefaults.cardElevation(0.dp)
-            ) {
-                Row(
-                    Modifier.fillMaxWidth().padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        "Rascunho recuperado da sessão anterior.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = PendenteOrange,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Row {
-                        TextButton(onClick = { viewModel.dispensarAvisoRascunho() }) { Text("OK") }
-                        TextButton(onClick = { viewModel.descartarRascunho() }) { Text("Descartar") }
-                    }
-                }
-            }
-        }
-
         // Método + maleta vêm do login (só leitura)
         Card(
             colors = CardDefaults.cardColors(containerColor = SaniblueBlue.copy(alpha = 0.08f)),
@@ -454,7 +435,7 @@ private fun PassoCadastro(uiState: NovoEnsaioUiState, viewModel: NovoEnsaioViewM
             OutlinedTextField(
                 value = uiState.matricula,
                 onValueChange = viewModel::updateMatricula,
-                label = { Text("Matrícula *") },
+                label = { Text("Matrícula/ID/CPF *") },
                 isError = uiState.validationErrors.containsKey("matricula"),
                 modifier = Modifier.weight(1f),
                 singleLine = true
@@ -588,20 +569,32 @@ private fun PassoCadastro(uiState: NovoEnsaioUiState, viewModel: NovoEnsaioViewM
         // === DADOS DO ENSAIO ===
         SectionHeader(title = "Dados do Ensaio")
 
-        OutlinedTextField(
-            value = uiState.dataEnsaio,
-            onValueChange = viewModel::updateDataEnsaio,
-            label = { Text("Data *") },
-            isError = uiState.validationErrors.containsKey("dataEnsaio"),
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            placeholder = { Text("DD/MM/AAAA") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            visualTransformation = DateVisualTransformation(),
-            supportingText = uiState.validationErrors["dataEnsaio"]?.let {
-                { Text(it, color = MaterialTheme.colorScheme.error) }
-            }
-        )
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(
+                value = uiState.dataEnsaio,
+                onValueChange = viewModel::updateDataEnsaio,
+                label = { Text("Data *") },
+                isError = uiState.validationErrors.containsKey("dataEnsaio"),
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                placeholder = { Text("DD/MM/AAAA") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                visualTransformation = DateVisualTransformation(),
+                supportingText = uiState.validationErrors["dataEnsaio"]?.let {
+                    { Text(it, color = MaterialTheme.colorScheme.error) }
+                }
+            )
+            OutlinedTextField(
+                value = uiState.horaInicial,
+                onValueChange = viewModel::updateHoraInicial,
+                label = { Text("Hora Inicial") },
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                placeholder = { Text("HH:MM") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                visualTransformation = HoraVisualTransformation()
+            )
+        }
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
@@ -746,19 +739,14 @@ private fun PassoVazao(tipo: TipoVazao, uiState: NovoEnsaioUiState, viewModel: N
         TipoVazao.MINIMA -> uiState.minima
     }
     val titulo = uiState.norma.labelPara(tipo)
-    // Convenção da tabela de referência: Q3/Nominal da Portaria 155 é em m³/h;
-    // as demais vazões (e a Portaria 246 inteira) são em L/h.
+    // Vazão de referência sempre em L/h (nunca m³/h), com as casas decimais da tabela
     val vazaoRefTexto = uiState.modeloSelecionado?.let { modelo ->
-        if (tipo == TipoVazao.NOMINAL && uiState.norma == NormaEnsaio.PORTARIA_155) {
-            "${formatM3h(modelo.vazaoNominal)} m³/h"
-        } else {
-            val litros = when (tipo) {
-                TipoVazao.NOMINAL -> modelo.vazaoNominal
-                TipoVazao.TRANSICAO -> modelo.vazaoTransicao
-                TipoVazao.MINIMA -> modelo.vazaoMinima
-            }
-            "${litros.toInt()} L/h"
+        val litros = when (tipo) {
+            TipoVazao.NOMINAL -> modelo.vazaoNominal
+            TipoVazao.TRANSICAO -> modelo.vazaoTransicao
+            TipoVazao.MINIMA -> modelo.vazaoMinima
         }
+        "${formatVazao(litros)} L/h"
     }
 
     Column(
@@ -801,11 +789,39 @@ private fun PassoVazao(tipo: TipoVazao, uiState: NovoEnsaioUiState, viewModel: N
                         text = buildString {
                             append("Limite: ${uiState.norma.limiteLabel(tipo)}")
                             if (vazaoRefTexto != null) append("  •  Vazão: $vazaoRefTexto")
+                            append("  •  Litros do Ensaio: ${tipo.litrosEnsaio} L")
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+            }
+
+            // === VAZÃO NÃO ATINGIDA EM CAMPO ===
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Não atingiu a vazão de referência",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Switch(
+                    checked = vazaoState.vazaoNaoAtingida,
+                    onCheckedChange = { viewModel.setVazaoNaoAtingida(tipo, it) }
+                )
+            }
+            if (vazaoState.vazaoNaoAtingida) {
+                OutlinedTextField(
+                    value = vazaoState.vazaoUtilizada,
+                    onValueChange = { viewModel.updateVazaoUtilizada(tipo, it) },
+                    label = { Text("Vazão utilizada no teste (L/h)") },
+                    placeholder = { Text("Ex.: 1200") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
             }
 
             listOf(1 to vazaoState.m1, 2 to vazaoState.m2, 3 to vazaoState.m3).forEach { (indice, m) ->
@@ -826,8 +842,15 @@ private fun PassoVazao(tipo: TipoVazao, uiState: NovoEnsaioUiState, viewModel: N
                     onPadraoInicialChange = { viewModel.updateMedicao(tipo, indice, padraoInicial = it) },
                     onPadraoFinalChange = { viewModel.updateMedicao(tipo, indice, padraoFinal = it) },
                     onLeituraInicialBlur = { viewModel.verificarLeituraInicialSuspeita(tipo, indice) },
-                    onLeituraFinalBlur = { viewModel.verificarLeituraFinalSuspeita(tipo, indice) },
-                    onPadraoFinalBlur = { viewModel.verificarPadraoFinalSuspeita(tipo, indice) }
+                    onLeituraFinalBlur = {
+                        viewModel.verificarLeituraFinalSuspeita(tipo, indice)
+                        viewModel.preencherProximaLeituraInicial(tipo, indice)
+                    },
+                    onPadraoInicialBlur = { viewModel.verificarPadraoInicialSuspeita(tipo, indice) },
+                    onPadraoFinalBlur = {
+                        viewModel.verificarPadraoFinalSuspeita(tipo, indice)
+                        viewModel.preencherProximaLeituraInicial(tipo, indice)
+                    }
                 )
             }
 
@@ -862,6 +885,38 @@ private fun PassoResultado(uiState: NovoEnsaioUiState, viewModel: NovoEnsaioView
             ResumoVazaoLinha(uiState.norma.labelTransicao, uiState.transicao)
             ResumoVazaoLinha(uiState.norma.labelMinima, uiState.minima)
             Spacer(Modifier.height(4.dp))
+        }
+
+        // === HORÁRIO DO ENSAIO ===
+        SectionHeader(title = "Horário do Ensaio")
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(
+                value = uiState.horaInicial,
+                onValueChange = viewModel::updateHoraInicial,
+                label = { Text("Hora Inicial") },
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                placeholder = { Text("HH:MM") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                visualTransformation = HoraVisualTransformation()
+            )
+            OutlinedTextField(
+                value = uiState.horaFinal,
+                onValueChange = viewModel::updateHoraFinal,
+                label = { Text("Hora Final") },
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                placeholder = { Text("HH:MM") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                visualTransformation = HoraVisualTransformation()
+            )
+        }
+        calcularDuracaoMin(uiState.horaInicial, uiState.horaFinal)?.let { minutos ->
+            Text(
+                "Duração do ensaio: ${formatarDuracao(minutos)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
 
         ResultadoFinalCard(resultado = uiState.resultadoFinal)
@@ -1104,12 +1159,6 @@ private fun ResultadoFinalCard(resultado: ResultadoFinal) {
 
 private data class Quadruplet<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
 
-/** Converte L/h para m³/h, sem casas decimais desnecessárias (ex.: 1600.0 → "1.6", 1000.0 → "1"). */
-private fun formatM3h(litrosPorHora: Double): String {
-    val s = "%.3f".format(litrosPorHora / 1000.0)
-    return s.trimEnd('0').trimEnd('.')
-}
-
 /**
  * Máscara visual DD/MM/AAAA para TextField.
  * O campo armazena apenas dígitos ("08052026"); a barra é inserida só na exibição.
@@ -1140,6 +1189,36 @@ private class DateVisualTransformation : VisualTransformation {
                     offset <= 5 -> offset - 1
                     else        -> offset - 2
                 }
+                return minOf(mapped, digits.length)
+            }
+        }
+
+        return TransformedText(AnnotatedString(out), offsetMapping)
+    }
+}
+
+/**
+ * Máscara visual HH:MM para TextField.
+ * O campo armazena apenas dígitos ("0835"); os dois pontos são inseridos só na exibição.
+ */
+private class HoraVisualTransformation : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val digits = text.text.take(4)
+        val out = buildString {
+            digits.forEachIndexed { i, c ->
+                if (i == 2) append(':')
+                append(c)
+            }
+        }
+
+        val offsetMapping = object : OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int {
+                val mapped = if (offset <= 2) offset else offset + 1
+                return minOf(mapped, out.length)
+            }
+
+            override fun transformedToOriginal(offset: Int): Int {
+                val mapped = if (offset <= 2) offset else offset - 1
                 return minOf(mapped, digits.length)
             }
         }

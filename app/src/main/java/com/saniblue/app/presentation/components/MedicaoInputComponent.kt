@@ -44,6 +44,7 @@ fun MedicaoInputRow(
     onPadraoFinalChange: (String) -> Unit,
     onLeituraInicialBlur: () -> Unit = {},
     onLeituraFinalBlur: () -> Unit = {},
+    onPadraoInicialBlur: () -> Unit = {},
     onPadraoFinalBlur: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -86,7 +87,7 @@ fun MedicaoInputRow(
                         label = { Text("Padrão Inicial", style = MaterialTheme.typography.labelSmall) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).aoSairDoCampo(onPadraoInicialBlur),
                         textStyle = MaterialTheme.typography.bodyMedium
                     )
                     OutlinedTextField(

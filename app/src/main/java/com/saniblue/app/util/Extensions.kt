@@ -89,7 +89,51 @@ fun Char.isLetraCapacidadeConhecida(norma: NormaEnsaio): Boolean = when (norma) 
     NormaEnsaio.PORTARIA_155 -> this in LETRAS_CONHECIDAS_155
 }
 
+/**
+ * Formata uma vazão em L/h sempre em litros por hora (nunca m³/h), sem casas
+ * decimais desnecessárias. Ex.: 750.0 → "750", 12.5 → "12.5", 20.48 → "20.48".
+ */
+fun formatVazao(litrosPorHora: Double): String {
+    val s = "%.2f".format(Locale.US, litrosPorHora)
+    return s.trimEnd('0').trimEnd('.')
+}
+
 fun dataAtualFormatada(): String {
     val sdf = SimpleDateFormat("dd/MM/yyyy", Locale("pt", "BR"))
     return sdf.format(Date())
+}
+
+/** Hora atual do aparelho como dígitos "HHmm" (formato interno dos campos de horário). */
+fun horaAtualDigits(): String = SimpleDateFormat("HHmm", Locale("pt", "BR")).format(Date())
+
+/** Converte "HHmm" em minutos desde 00:00, ou null se incompleto/inválido. */
+private fun String.horaEmMinutos(): Int? {
+    if (length < 4) return null
+    val h = take(2).toIntOrNull() ?: return null
+    val m = drop(2).take(2).toIntOrNull() ?: return null
+    if (h !in 0..23 || m !in 0..59) return null
+    return h * 60 + m
+}
+
+/**
+ * Duração em minutos entre duas horas "HHmm" (início e fim do ensaio). Se o fim for
+ * "menor" que o início, assume que passou da meia-noite. Retorna null se alguma das
+ * duas estiver incompleta/inválida.
+ */
+fun calcularDuracaoMin(horaInicial: String, horaFinal: String): Int? {
+    val ini = horaInicial.horaEmMinutos() ?: return null
+    val fim = horaFinal.horaEmMinutos() ?: return null
+    val diff = fim - ini
+    return if (diff >= 0) diff else diff + 24 * 60
+}
+
+/** Formata minutos totais como "1h 15min" ou só "45min" quando não chega a 1h. */
+fun formatarDuracao(minutos: Int): String {
+    val h = minutos / 60
+    val m = minutos % 60
+    return when {
+        h > 0 && m > 0 -> "${h}h ${m}min"
+        h > 0 -> "${h}h"
+        else -> "${m}min"
+    }
 }
