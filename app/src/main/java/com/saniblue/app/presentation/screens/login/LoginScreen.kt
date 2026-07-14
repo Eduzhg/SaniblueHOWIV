@@ -200,14 +200,15 @@ fun LoginScreen(
                     )
                     Text("Tipo de ensaio: $metodoLabel", style = MaterialTheme.typography.bodySmall)
                     Text("Maleta: ${BuildConfig.MALETA_NOME}", style = MaterialTheme.typography.bodySmall)
-                    Text("Erros padrão da maleta (por vazão):", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
-                    Text(
-                        text = "• Nominal: ${BuildConfig.ERRO_PADRAO_NOMINAL}%\n" +
-                            "• Transição: ${BuildConfig.ERRO_PADRAO_TRANSICAO}%\n" +
-                            "• Mínima: ${BuildConfig.ERRO_PADRAO_MINIMA}%",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    // Escondido a pedido do usuário — pode voltar a ser exibido no futuro.
+                    // Text("Erros padrão da maleta (por vazão):", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
+                    // Text(
+                    //     text = "• Nominal: ${BuildConfig.ERRO_PADRAO_NOMINAL}%\n" +
+                    //         "• Transição: ${BuildConfig.ERRO_PADRAO_TRANSICAO}%\n" +
+                    //         "• Mínima: ${BuildConfig.ERRO_PADRAO_MINIMA}%",
+                    //     style = MaterialTheme.typography.bodySmall,
+                    //     color = MaterialTheme.colorScheme.onSurfaceVariant
+                    // )
 
                     if (uiState.error != null) {
                         Text(

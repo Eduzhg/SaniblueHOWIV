@@ -73,7 +73,7 @@ fun MedicaoInputRow(
             if (comparativo) {
                 // Método comparativo: leituras do padrão ultrassônico (a maleta não zera)
                 Text(
-                    text = "Padrão ultrassônico (maleta)",
+                    text = "Padrão (maleta)",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

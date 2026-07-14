@@ -11,6 +11,15 @@ REM ============================================================
 
 cd /d "%~dp0"
 
+REM Se JAVA_HOME nao estiver configurado no sistema, usa o JDK que vem junto
+REM com o Android Studio (evita o erro "JAVA_HOME is not set" ao rodar fora
+REM do Android Studio, ex.: pelo Code Runner do VS Code).
+if "%JAVA_HOME%"=="" (
+    if exist "%ProgramFiles%\Android\Android Studio\jbr\bin\java.exe" (
+        set "JAVA_HOME=%ProgramFiles%\Android\Android Studio\jbr"
+    )
+)
+
 if not exist "maletas.csv" (
     echo [ERRO] Arquivo maletas.csv nao encontrado nesta pasta.
     exit /b 1
