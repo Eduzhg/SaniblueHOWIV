@@ -17,5 +17,23 @@ val MIGRATION_11_12 = object : Migration(11, 12) {
     }
 }
 
+/** v12 → v13: uma foto por leitura de cada medicao (auditoria em campo). */
+val MIGRATION_12_13 = object : Migration(12, 13) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE vazao_ensaios ADD COLUMN m1_foto_padrao_inicial TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE vazao_ensaios ADD COLUMN m1_foto_padrao_final TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE vazao_ensaios ADD COLUMN m1_foto_leitura_inicial TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE vazao_ensaios ADD COLUMN m1_foto_leitura_final TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE vazao_ensaios ADD COLUMN m2_foto_padrao_inicial TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE vazao_ensaios ADD COLUMN m2_foto_padrao_final TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE vazao_ensaios ADD COLUMN m2_foto_leitura_inicial TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE vazao_ensaios ADD COLUMN m2_foto_leitura_final TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE vazao_ensaios ADD COLUMN m3_foto_padrao_inicial TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE vazao_ensaios ADD COLUMN m3_foto_padrao_final TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE vazao_ensaios ADD COLUMN m3_foto_leitura_inicial TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE vazao_ensaios ADD COLUMN m3_foto_leitura_final TEXT NOT NULL DEFAULT ''")
+    }
+}
+
 /** Todas as migrações conhecidas, na ordem. */
-val MIGRATIONS = arrayOf(MIGRATION_11_12)
+val MIGRATIONS = arrayOf(MIGRATION_11_12, MIGRATION_12_13)

@@ -20,6 +20,20 @@ data class VazaoEnsaio(
     val m2PadraoFinal: Double = 0.0,
     val m3PadraoInicial: Double = 0.0,
     val m3PadraoFinal: Double = 0.0,
+    // Fotos das leituras (auditoria em campo) — caminho do JPG, "" se nao fotografou.
+    // Servem so para o tecnico conferir a leitura depois; nao entram no laudo.
+    val m1FotoPadraoInicial: String = "",
+    val m1FotoPadraoFinal: String = "",
+    val m1FotoLeituraInicial: String = "",
+    val m1FotoLeituraFinal: String = "",
+    val m2FotoPadraoInicial: String = "",
+    val m2FotoPadraoFinal: String = "",
+    val m2FotoLeituraInicial: String = "",
+    val m2FotoLeituraFinal: String = "",
+    val m3FotoPadraoInicial: String = "",
+    val m3FotoPadraoFinal: String = "",
+    val m3FotoLeituraInicial: String = "",
+    val m3FotoLeituraFinal: String = "",
     // Calculados
     val erro1: Double = 0.0,
     val erro2: Double = 0.0,
@@ -31,6 +45,14 @@ data class VazaoEnsaio(
     val vazaoNaoAtingida: Boolean = false,
     val vazaoUtilizada: Double = 0.0
 )
+
+/** Qual leitura da medicao a foto registra (usado no rotulo e no nome do arquivo). */
+enum class CampoLeitura(val rotulo: String, val curto: String) {
+    PADRAO_INICIAL("Padrão Inicial", "padrao_inicial"),
+    PADRAO_FINAL("Padrão Final", "padrao_final"),
+    LEITURA_INICIAL("Leitura Inicial", "leitura_inicial"),
+    LEITURA_FINAL("Leitura Final", "leitura_final")
+}
 
 enum class TipoVazao(val label: String, val litrosEnsaio: Int) {
     // Volume de água exigido por medição — fixo, independe do hidrômetro, da norma

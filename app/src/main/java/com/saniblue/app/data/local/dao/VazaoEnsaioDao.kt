@@ -32,4 +32,47 @@ interface VazaoEnsaioDao {
 
     @Query("DELETE FROM vazao_ensaios WHERE ensaio_id = :ensaioId")
     suspend fun deleteByEnsaioId(ensaioId: Long)
+
+    @Query("SELECT * FROM vazao_ensaios")
+    suspend fun getAllSync(): List<VazaoEnsaioEntity>
+
+    /**
+     * Zera os caminhos das fotos de leitura de um ensaio. As medições e o resultado
+     * continuam intactos — some apenas a foto de conferência.
+     */
+    @Query("""
+        UPDATE vazao_ensaios SET
+            m1_foto_padrao_inicial = '',
+            m1_foto_padrao_final = '',
+            m1_foto_leitura_inicial = '',
+            m1_foto_leitura_final = '',
+            m2_foto_padrao_inicial = '',
+            m2_foto_padrao_final = '',
+            m2_foto_leitura_inicial = '',
+            m2_foto_leitura_final = '',
+            m3_foto_padrao_inicial = '',
+            m3_foto_padrao_final = '',
+            m3_foto_leitura_inicial = '',
+            m3_foto_leitura_final = ''
+        WHERE ensaio_id = :ensaioId
+    """)
+    suspend fun limparFotosLeituraDoEnsaio(ensaioId: Long)
+
+    /** Mesma limpeza, para todos os ensaios do aparelho. */
+    @Query("""
+        UPDATE vazao_ensaios SET
+            m1_foto_padrao_inicial = '',
+            m1_foto_padrao_final = '',
+            m1_foto_leitura_inicial = '',
+            m1_foto_leitura_final = '',
+            m2_foto_padrao_inicial = '',
+            m2_foto_padrao_final = '',
+            m2_foto_leitura_inicial = '',
+            m2_foto_leitura_final = '',
+            m3_foto_padrao_inicial = '',
+            m3_foto_padrao_final = '',
+            m3_foto_leitura_inicial = '',
+            m3_foto_leitura_final = ''
+    """)
+    suspend fun limparTodasFotosLeitura()
 }

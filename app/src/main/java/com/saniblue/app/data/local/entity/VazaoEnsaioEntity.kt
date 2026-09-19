@@ -50,6 +50,23 @@ data class VazaoEnsaioEntity(
     @ColumnInfo("m3_padrao_inicial") val m3PadraoInicial: Double = 0.0,
     @ColumnInfo("m3_padrao_final") val m3PadraoFinal: Double = 0.0,
 
+    // Fotos das leituras (auditoria do proprio tecnico em campo) — caminho do JPG
+    // no armazenamento do app, "" quando ainda nao fotografou. NAO vao para o laudo.
+    @ColumnInfo("m1_foto_padrao_inicial") val m1FotoPadraoInicial: String = "",
+    @ColumnInfo("m1_foto_padrao_final") val m1FotoPadraoFinal: String = "",
+    @ColumnInfo("m1_foto_leitura_inicial") val m1FotoLeituraInicial: String = "",
+    @ColumnInfo("m1_foto_leitura_final") val m1FotoLeituraFinal: String = "",
+
+    @ColumnInfo("m2_foto_padrao_inicial") val m2FotoPadraoInicial: String = "",
+    @ColumnInfo("m2_foto_padrao_final") val m2FotoPadraoFinal: String = "",
+    @ColumnInfo("m2_foto_leitura_inicial") val m2FotoLeituraInicial: String = "",
+    @ColumnInfo("m2_foto_leitura_final") val m2FotoLeituraFinal: String = "",
+
+    @ColumnInfo("m3_foto_padrao_inicial") val m3FotoPadraoInicial: String = "",
+    @ColumnInfo("m3_foto_padrao_final") val m3FotoPadraoFinal: String = "",
+    @ColumnInfo("m3_foto_leitura_inicial") val m3FotoLeituraInicial: String = "",
+    @ColumnInfo("m3_foto_leitura_final") val m3FotoLeituraFinal: String = "",
+
     // Resultados calculados e persistidos para histórico
     @ColumnInfo("erro_1") val erro1: Double = 0.0,
     @ColumnInfo("erro_2") val erro2: Double = 0.0,

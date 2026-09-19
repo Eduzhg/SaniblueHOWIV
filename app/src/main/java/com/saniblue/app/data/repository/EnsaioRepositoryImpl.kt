@@ -9,6 +9,7 @@ import com.saniblue.app.domain.model.Ensaio
 import com.saniblue.app.domain.model.MetodoEnsaio
 import com.saniblue.app.domain.model.NormaEnsaio
 import com.saniblue.app.domain.model.ResultadoFinal
+import com.saniblue.app.domain.model.ResumoFotosEnsaio
 import com.saniblue.app.domain.model.TipoVazao
 import com.saniblue.app.domain.model.VazaoEnsaio
 import com.saniblue.app.domain.repository.EnsaioRepository
@@ -161,6 +162,47 @@ class EnsaioRepositoryImpl @Inject constructor(
         resultadoFinal = resultadoFinal.name
     )
 
+    override suspend fun getResumoFotosLeitura(): List<ResumoFotosEnsaio> =
+        vazaoEnsaioDao.getAllSync()
+            .groupBy { it.ensaioId }
+            .mapNotNull { (ensaioId, vazoes) ->
+                val total = vazoes.sumOf { it.fotosLeitura().size }
+                if (total == 0) return@mapNotNull null
+                val ensaio = ensaioDao.getById(ensaioId) ?: return@mapNotNull null
+                ResumoFotosEnsaio(
+                    ensaioId = ensaioId,
+                    numeroHidrometro = ensaio.numeroHidrometro,
+                    dataEnsaio = ensaio.dataEnsaio,
+                    quantidadeFotos = total
+                )
+            }
+            .sortedByDescending { it.ensaioId }
+
+    override suspend fun limparFotosLeitura(ensaioId: Long?): List<String> {
+        val alvo = if (ensaioId == null) vazaoEnsaioDao.getAllSync()
+                   else vazaoEnsaioDao.getByEnsaioIdSync(ensaioId)
+        val orfaos = alvo.flatMap { it.fotosLeitura() }
+        if (ensaioId == null) vazaoEnsaioDao.limparTodasFotosLeitura()
+        else vazaoEnsaioDao.limparFotosLeituraDoEnsaio(ensaioId)
+        return orfaos
+    }
+
+    /** Caminhos das fotos de leitura realmente preenchidos nesta vazão. */
+    private fun VazaoEnsaioEntity.fotosLeitura(): List<String> = listOf(
+        m1FotoPadraoInicial,
+        m1FotoPadraoFinal,
+        m1FotoLeituraInicial,
+        m1FotoLeituraFinal,
+        m2FotoPadraoInicial,
+        m2FotoPadraoFinal,
+        m2FotoLeituraInicial,
+        m2FotoLeituraFinal,
+        m3FotoPadraoInicial,
+        m3FotoPadraoFinal,
+        m3FotoLeituraInicial,
+        m3FotoLeituraFinal,
+    ).filter { it.isNotBlank() }
+
     private fun VazaoEnsaioEntity.toDomain() = VazaoEnsaio(
         id = id,
         tipoVazao = TipoVazao.valueOf(tipoVazao),
@@ -179,6 +221,18 @@ class EnsaioRepositoryImpl @Inject constructor(
         m2PadraoFinal = m2PadraoFinal,
         m3PadraoInicial = m3PadraoInicial,
         m3PadraoFinal = m3PadraoFinal,
+        m1FotoPadraoInicial = m1FotoPadraoInicial,
+        m1FotoPadraoFinal = m1FotoPadraoFinal,
+        m1FotoLeituraInicial = m1FotoLeituraInicial,
+        m1FotoLeituraFinal = m1FotoLeituraFinal,
+        m2FotoPadraoInicial = m2FotoPadraoInicial,
+        m2FotoPadraoFinal = m2FotoPadraoFinal,
+        m2FotoLeituraInicial = m2FotoLeituraInicial,
+        m2FotoLeituraFinal = m2FotoLeituraFinal,
+        m3FotoPadraoInicial = m3FotoPadraoInicial,
+        m3FotoPadraoFinal = m3FotoPadraoFinal,
+        m3FotoLeituraInicial = m3FotoLeituraInicial,
+        m3FotoLeituraFinal = m3FotoLeituraFinal,
         erro1 = erro1,
         erro2 = erro2,
         erro3 = erro3,
@@ -207,6 +261,18 @@ class EnsaioRepositoryImpl @Inject constructor(
         m2PadraoFinal = m2PadraoFinal,
         m3PadraoInicial = m3PadraoInicial,
         m3PadraoFinal = m3PadraoFinal,
+        m1FotoPadraoInicial = m1FotoPadraoInicial,
+        m1FotoPadraoFinal = m1FotoPadraoFinal,
+        m1FotoLeituraInicial = m1FotoLeituraInicial,
+        m1FotoLeituraFinal = m1FotoLeituraFinal,
+        m2FotoPadraoInicial = m2FotoPadraoInicial,
+        m2FotoPadraoFinal = m2FotoPadraoFinal,
+        m2FotoLeituraInicial = m2FotoLeituraInicial,
+        m2FotoLeituraFinal = m2FotoLeituraFinal,
+        m3FotoPadraoInicial = m3FotoPadraoInicial,
+        m3FotoPadraoFinal = m3FotoPadraoFinal,
+        m3FotoLeituraInicial = m3FotoLeituraInicial,
+        m3FotoLeituraFinal = m3FotoLeituraFinal,
         erro1 = erro1,
         erro2 = erro2,
         erro3 = erro3,

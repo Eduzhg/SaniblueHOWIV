@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.saniblue.app.domain.model.CampoLeitura
 import com.saniblue.app.domain.model.ClasseHidrometro
 import com.saniblue.app.domain.model.Ensaio
 import com.saniblue.app.domain.model.HidrometroModelo
@@ -27,6 +28,7 @@ import com.saniblue.app.util.normaDoSerial
 import com.saniblue.app.util.toDoubleLocale
 import com.saniblue.app.util.AssinaturaHelper
 import com.saniblue.app.util.FotoEnsaioHelper
+import com.saniblue.app.util.FotoLeituraHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -59,8 +61,27 @@ data class MedicaoState(
     // técnico já confirmou que o padrão final < inicial (padrão ultrassônico) está correto
     val padraoFinalMenorConfirmada: Boolean = false,
     // técnico já confirmou que o padrão inicial (menor que o final anterior) está correto
-    val padraoInicialConfirmada: Boolean = false
-)
+    val padraoInicialConfirmada: Boolean = false,
+    // Foto de cada leitura (caminho do JPG); "" enquanto o técnico não fotografou
+    val fotoPadraoInicial: String = "",
+    val fotoPadraoFinal: String = "",
+    val fotoLeituraInicial: String = "",
+    val fotoLeituraFinal: String = ""
+) {
+    fun fotoDe(campo: CampoLeitura): String = when (campo) {
+        CampoLeitura.PADRAO_INICIAL -> fotoPadraoInicial
+        CampoLeitura.PADRAO_FINAL -> fotoPadraoFinal
+        CampoLeitura.LEITURA_INICIAL -> fotoLeituraInicial
+        CampoLeitura.LEITURA_FINAL -> fotoLeituraFinal
+    }
+
+    fun comFoto(campo: CampoLeitura, path: String): MedicaoState = when (campo) {
+        CampoLeitura.PADRAO_INICIAL -> copy(fotoPadraoInicial = path)
+        CampoLeitura.PADRAO_FINAL -> copy(fotoPadraoFinal = path)
+        CampoLeitura.LEITURA_INICIAL -> copy(fotoLeituraInicial = path)
+        CampoLeitura.LEITURA_FINAL -> copy(fotoLeituraFinal = path)
+    }
+}
 
 enum class TipoAlertaLeitura { ERRO_ALTO, LEITURA_RETROCEDIDA, FINAL_MENOR_INICIAL }
 
@@ -344,7 +365,11 @@ class NovoEnsaioViewModel @Inject constructor(
             leituraFinal = m1LeituraFinal.toEditString(),
             padraoInicial = m1PadraoInicial.toEditString(),
             padraoFinal = m1PadraoFinal.toEditString(),
-            erro = erro1
+            erro = erro1,
+            fotoPadraoInicial = m1FotoPadraoInicial,
+            fotoPadraoFinal = m1FotoPadraoFinal,
+            fotoLeituraInicial = m1FotoLeituraInicial,
+            fotoLeituraFinal = m1FotoLeituraFinal
         ),
         m2 = MedicaoState(
             escoamento = m2Escoamento.toEditString(),
@@ -352,7 +377,11 @@ class NovoEnsaioViewModel @Inject constructor(
             leituraFinal = m2LeituraFinal.toEditString(),
             padraoInicial = m2PadraoInicial.toEditString(),
             padraoFinal = m2PadraoFinal.toEditString(),
-            erro = erro2
+            erro = erro2,
+            fotoPadraoInicial = m2FotoPadraoInicial,
+            fotoPadraoFinal = m2FotoPadraoFinal,
+            fotoLeituraInicial = m2FotoLeituraInicial,
+            fotoLeituraFinal = m2FotoLeituraFinal
         ),
         m3 = MedicaoState(
             escoamento = m3Escoamento.toEditString(),
@@ -360,7 +389,11 @@ class NovoEnsaioViewModel @Inject constructor(
             leituraFinal = m3LeituraFinal.toEditString(),
             padraoInicial = m3PadraoInicial.toEditString(),
             padraoFinal = m3PadraoFinal.toEditString(),
-            erro = erro3
+            erro = erro3,
+            fotoPadraoInicial = m3FotoPadraoInicial,
+            fotoPadraoFinal = m3FotoPadraoFinal,
+            fotoLeituraInicial = m3FotoLeituraInicial,
+            fotoLeituraFinal = m3FotoLeituraFinal
         ),
         erroMedio = erroMedio,
         aprovado = aprovado,
@@ -521,6 +554,29 @@ class NovoEnsaioViewModel @Inject constructor(
     private fun apagarArquivoAssinatura(path: String) {
         if (path.isBlank()) return
         viewModelScope.launch { withContext(Dispatchers.IO) { AssinaturaHelper.apagarAssinatura(path) } }
+    }
+
+    // --- Fotos das leituras (auditoria em campo) ---
+
+    /**
+     * Registra a foto recém tirada. A anterior daquela mesma leitura é apagada, para
+     * o aparelho não acumular fotos órfãs (são até 36 por ensaio).
+     */
+    fun setFotoLeitura(tipo: TipoVazao, indice: Int, campo: CampoLeitura, path: String) {
+        val anterior = _uiState.value.vazao(tipo).medicao(indice).fotoDe(campo)
+        update {
+            val vs = vazao(tipo)
+            withVazao(tipo, vs.withMedicao(indice, vs.medicao(indice).comFoto(campo, path)))
+        }
+        if (anterior.isNotBlank() && anterior != path) {
+            viewModelScope.launch { withContext(Dispatchers.IO) { FotoLeituraHelper.apagar(anterior) } }
+        }
+    }
+
+    /** Descarta o arquivo criado quando a câmera foi cancelada (fica vazio no disco). */
+    fun descartarFotoNaoTirada(path: String) {
+        if (path.isBlank()) return
+        viewModelScope.launch { withContext(Dispatchers.IO) { FotoLeituraHelper.apagar(path) } }
     }
 
     // Alerta de leitura suspeita
@@ -1037,6 +1093,18 @@ class NovoEnsaioViewModel @Inject constructor(
             m2PadraoFinal    = vs.m2.padraoFinal.d(),
             m3PadraoInicial  = vs.m3.padraoInicial.d(),
             m3PadraoFinal    = vs.m3.padraoFinal.d(),
+            m1FotoPadraoInicial  = vs.m1.fotoPadraoInicial,
+            m1FotoPadraoFinal    = vs.m1.fotoPadraoFinal,
+            m1FotoLeituraInicial = vs.m1.fotoLeituraInicial,
+            m1FotoLeituraFinal   = vs.m1.fotoLeituraFinal,
+            m2FotoPadraoInicial  = vs.m2.fotoPadraoInicial,
+            m2FotoPadraoFinal    = vs.m2.fotoPadraoFinal,
+            m2FotoLeituraInicial = vs.m2.fotoLeituraInicial,
+            m2FotoLeituraFinal   = vs.m2.fotoLeituraFinal,
+            m3FotoPadraoInicial  = vs.m3.fotoPadraoInicial,
+            m3FotoPadraoFinal    = vs.m3.fotoPadraoFinal,
+            m3FotoLeituraInicial = vs.m3.fotoLeituraInicial,
+            m3FotoLeituraFinal   = vs.m3.fotoLeituraFinal,
             erro1    = vs.m1.erro ?: 0.0,
             erro2    = vs.m2.erro ?: 0.0,
             erro3    = vs.m3.erro ?: 0.0,

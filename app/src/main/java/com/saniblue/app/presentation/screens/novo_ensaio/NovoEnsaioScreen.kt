@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PhotoCamera
 import com.saniblue.app.util.FotoEnsaioHelper
+import com.saniblue.app.util.FotoLeituraHelper
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -81,6 +82,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.saniblue.app.domain.model.CampoLeitura
 import com.saniblue.app.domain.model.ClasseHidrometro
 import com.saniblue.app.domain.model.MetodoEnsaio
 import com.saniblue.app.domain.model.MotivosNaoRealizado
@@ -88,6 +90,7 @@ import com.saniblue.app.domain.model.NormaEnsaio
 import com.saniblue.app.domain.model.ResultadoFinal
 import com.saniblue.app.domain.model.TipoVazao
 import com.saniblue.app.presentation.components.AssinaturaCampo
+import com.saniblue.app.presentation.components.VisualizadorFotoDialog
 import com.saniblue.app.presentation.components.MedicaoInputRow
 import com.saniblue.app.presentation.components.SectionHeader
 import com.saniblue.app.presentation.theme.AprovadoGreen
@@ -98,6 +101,7 @@ import com.saniblue.app.presentation.theme.ReprovadoRed
 import com.saniblue.app.presentation.theme.ReprovadoRedContainer
 import com.saniblue.app.presentation.theme.SaniblueBlue
 import com.saniblue.app.util.calcularDuracaoMin
+import java.io.File
 import com.saniblue.app.util.formatVazao
 import com.saniblue.app.util.formatarDuracao
 
@@ -740,6 +744,62 @@ private fun PassoVazao(tipo: TipoVazao, uiState: NovoEnsaioUiState, viewModel: N
         TipoVazao.MINIMA -> uiState.minima
     }
     val titulo = uiState.norma.labelPara(tipo)
+    val context = LocalContext.current
+
+    // Foto da leitura pendente na câmera. Guardado em rememberSaveable porque o app
+    // pode ser morto enquanto a câmera está aberta — ao voltar, o resultado ainda
+    // precisa saber a qual leitura pertence.
+    var pendenteIndice by rememberSaveable { mutableStateOf(0) }
+    var pendenteCampo by rememberSaveable { mutableStateOf("") }
+    var pendentePath by rememberSaveable { mutableStateOf("") }
+    // Foto aberta no visualizador ("" = nenhuma)
+    var vendoIndice by rememberSaveable { mutableStateOf(0) }
+    var vendoCampo by rememberSaveable { mutableStateOf("") }
+
+    fun limparPendente() {
+        pendenteIndice = 0; pendenteCampo = ""; pendentePath = ""
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { sucesso ->
+        val campo = pendenteCampo
+        val path = pendentePath
+        val indice = pendenteIndice
+        limparPendente()
+        if (campo.isBlank() || path.isBlank()) return@rememberLauncherForActivityResult
+        if (sucesso) {
+            viewModel.setFotoLeitura(tipo, indice, CampoLeitura.valueOf(campo), path)
+        } else {
+            // Câmera cancelada: remove o arquivo vazio que ela possa ter criado
+            viewModel.descartarFotoNaoTirada(path)
+        }
+    }
+
+    val permissaoCameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { concedida ->
+        if (concedida && pendentePath.isNotBlank()) {
+            cameraLauncher.launch(FotoLeituraHelper.uriPara(context, File(pendentePath)))
+        } else {
+            viewModel.descartarFotoNaoTirada(pendentePath)
+            limparPendente()
+        }
+    }
+
+    fun tirarFotoLeitura(indice: Int, campo: CampoLeitura) {
+        val arquivo = FotoLeituraHelper.criarArquivo(
+            context, uiState.numeroHidrometro, tipo, indice, campo
+        )
+        pendenteIndice = indice
+        pendenteCampo = campo.name
+        pendentePath = arquivo.absolutePath
+        val temPermissao = ContextCompat.checkSelfPermission(
+            context, android.Manifest.permission.CAMERA
+        ) == PackageManager.PERMISSION_GRANTED
+        if (temPermissao) {
+            cameraLauncher.launch(FotoLeituraHelper.uriPara(context, arquivo))
+        } else {
+            permissaoCameraLauncher.launch(android.Manifest.permission.CAMERA)
+        }
+    }
+
     // Vazão de referência sempre em L/h (nunca m³/h), com as casas decimais da tabela
     val vazaoRefTexto = uiState.modeloSelecionado?.let { modelo ->
         val litros = when (tipo) {
@@ -851,6 +911,12 @@ private fun PassoVazao(tipo: TipoVazao, uiState: NovoEnsaioUiState, viewModel: N
                     onPadraoFinalBlur = {
                         viewModel.verificarPadraoFinalSuspeita(tipo, indice)
                         viewModel.preencherProximaLeituraInicial(tipo, indice)
+                    },
+                    fotoDe = { campo -> m.fotoDe(campo) },
+                    onTirarFoto = { campo -> tirarFotoLeitura(indice, campo) },
+                    onVerFoto = { campo ->
+                        vendoIndice = indice
+                        vendoCampo = campo.name
                     }
                 )
             }
@@ -865,6 +931,30 @@ private fun PassoVazao(tipo: TipoVazao, uiState: NovoEnsaioUiState, viewModel: N
         }
 
         Spacer(Modifier.height(8.dp))
+    }
+
+    // Foto da leitura em tela cheia, com zoom
+    if (vendoCampo.isNotBlank()) {
+        val campo = CampoLeitura.valueOf(vendoCampo)
+        // Lido do estado da tela (e não do ViewModel) para o visualizador acompanhar
+        // a troca da foto sem precisar ser reaberto
+        val path = when (vendoIndice) {
+            1 -> vazaoState.m1
+            2 -> vazaoState.m2
+            else -> vazaoState.m3
+        }.fotoDe(campo)
+        if (path.isNotBlank()) {
+            VisualizadorFotoDialog(
+                titulo = "Medição $vendoIndice — ${campo.rotulo}",
+                path = path,
+                onFechar = { vendoCampo = "" },
+                onRefazer = {
+                    val indice = vendoIndice
+                    vendoCampo = ""
+                    tirarFotoLeitura(indice, campo)
+                }
+            )
+        }
     }
 }
 

@@ -22,6 +22,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.saniblue.app.domain.model.CampoLeitura
 import com.saniblue.app.domain.model.MetodoEnsaio
 import com.saniblue.app.util.toDoubleLocale
 
@@ -46,6 +47,10 @@ fun MedicaoInputRow(
     onLeituraFinalBlur: () -> Unit = {},
     onPadraoInicialBlur: () -> Unit = {},
     onPadraoFinalBlur: () -> Unit = {},
+    // Foto da leitura: caminho gravado por campo e as duas ações do atalho discreto
+    fotoDe: (CampoLeitura) -> String = { "" },
+    onTirarFoto: (CampoLeitura) -> Unit = {},
+    onVerFoto: (CampoLeitura) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val comparativo = metodo == MetodoEnsaio.COMPARATIVO_LEITURA
@@ -81,24 +86,36 @@ fun MedicaoInputRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    OutlinedTextField(
-                        value = padraoInicial,
-                        onValueChange = onPadraoInicialChange,
-                        label = { Text("Padrão Inicial", style = MaterialTheme.typography.labelSmall) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        singleLine = true,
-                        modifier = Modifier.weight(1f).aoSairDoCampo(onPadraoInicialBlur),
-                        textStyle = MaterialTheme.typography.bodyMedium
-                    )
-                    OutlinedTextField(
-                        value = padraoFinal,
-                        onValueChange = onPadraoFinalChange,
-                        label = { Text("Padrão Final", style = MaterialTheme.typography.labelSmall) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        singleLine = true,
-                        modifier = Modifier.weight(1f).aoSairDoCampo(onPadraoFinalBlur),
-                        textStyle = MaterialTheme.typography.bodyMedium
-                    )
+                    CampoComFoto(
+                        modifier = Modifier.weight(1f),
+                        campo = CampoLeitura.PADRAO_INICIAL,
+                        fotoDe = fotoDe, onTirarFoto = onTirarFoto, onVerFoto = onVerFoto
+                    ) {
+                        OutlinedTextField(
+                            value = padraoInicial,
+                            onValueChange = onPadraoInicialChange,
+                            label = { Text("Padrão Inicial", style = MaterialTheme.typography.labelSmall) },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth().aoSairDoCampo(onPadraoInicialBlur),
+                            textStyle = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                    CampoComFoto(
+                        modifier = Modifier.weight(1f),
+                        campo = CampoLeitura.PADRAO_FINAL,
+                        fotoDe = fotoDe, onTirarFoto = onTirarFoto, onVerFoto = onVerFoto
+                    ) {
+                        OutlinedTextField(
+                            value = padraoFinal,
+                            onValueChange = onPadraoFinalChange,
+                            label = { Text("Padrão Final", style = MaterialTheme.typography.labelSmall) },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth().aoSairDoCampo(onPadraoFinalBlur),
+                            textStyle = MaterialTheme.typography.bodyMedium
+                        )
+                    }
                     OutlinedTextField(
                         value = escoamento,
                         onValueChange = {},
@@ -119,24 +136,36 @@ fun MedicaoInputRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    OutlinedTextField(
-                        value = leituraInicial,
-                        onValueChange = onLeituraInicialChange,
-                        label = { Text("Leit. Inicial", style = MaterialTheme.typography.labelSmall) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        singleLine = true,
-                        modifier = Modifier.weight(1f).aoSairDoCampo(onLeituraInicialBlur),
-                        textStyle = MaterialTheme.typography.bodyMedium
-                    )
-                    OutlinedTextField(
-                        value = leituraFinal,
-                        onValueChange = onLeituraFinalChange,
-                        label = { Text("Leit. Final", style = MaterialTheme.typography.labelSmall) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        singleLine = true,
-                        modifier = Modifier.weight(1f).aoSairDoCampo(onLeituraFinalBlur),
-                        textStyle = MaterialTheme.typography.bodyMedium
-                    )
+                    CampoComFoto(
+                        modifier = Modifier.weight(1f),
+                        campo = CampoLeitura.LEITURA_INICIAL,
+                        fotoDe = fotoDe, onTirarFoto = onTirarFoto, onVerFoto = onVerFoto
+                    ) {
+                        OutlinedTextField(
+                            value = leituraInicial,
+                            onValueChange = onLeituraInicialChange,
+                            label = { Text("Leit. Inicial", style = MaterialTheme.typography.labelSmall) },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth().aoSairDoCampo(onLeituraInicialBlur),
+                            textStyle = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                    CampoComFoto(
+                        modifier = Modifier.weight(1f),
+                        campo = CampoLeitura.LEITURA_FINAL,
+                        fotoDe = fotoDe, onTirarFoto = onTirarFoto, onVerFoto = onVerFoto
+                    ) {
+                        OutlinedTextField(
+                            value = leituraFinal,
+                            onValueChange = onLeituraFinalChange,
+                            label = { Text("Leit. Final", style = MaterialTheme.typography.labelSmall) },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth().aoSairDoCampo(onLeituraFinalBlur),
+                            textStyle = MaterialTheme.typography.bodyMedium
+                        )
+                    }
                 }
             } else {
                 // Método escoamento direto: volume informado + leitura do hidrômetro
@@ -153,24 +182,36 @@ fun MedicaoInputRow(
                         modifier = Modifier.weight(1f),
                         textStyle = MaterialTheme.typography.bodyMedium
                     )
-                    OutlinedTextField(
-                        value = leituraInicial,
-                        onValueChange = onLeituraInicialChange,
-                        label = { Text("Leit. Inicial", style = MaterialTheme.typography.labelSmall) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        singleLine = true,
-                        modifier = Modifier.weight(1f).aoSairDoCampo(onLeituraInicialBlur),
-                        textStyle = MaterialTheme.typography.bodyMedium
-                    )
-                    OutlinedTextField(
-                        value = leituraFinal,
-                        onValueChange = onLeituraFinalChange,
-                        label = { Text("Leit. Final", style = MaterialTheme.typography.labelSmall) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        singleLine = true,
-                        modifier = Modifier.weight(1f).aoSairDoCampo(onLeituraFinalBlur),
-                        textStyle = MaterialTheme.typography.bodyMedium
-                    )
+                    CampoComFoto(
+                        modifier = Modifier.weight(1f),
+                        campo = CampoLeitura.LEITURA_INICIAL,
+                        fotoDe = fotoDe, onTirarFoto = onTirarFoto, onVerFoto = onVerFoto
+                    ) {
+                        OutlinedTextField(
+                            value = leituraInicial,
+                            onValueChange = onLeituraInicialChange,
+                            label = { Text("Leit. Inicial", style = MaterialTheme.typography.labelSmall) },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth().aoSairDoCampo(onLeituraInicialBlur),
+                            textStyle = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                    CampoComFoto(
+                        modifier = Modifier.weight(1f),
+                        campo = CampoLeitura.LEITURA_FINAL,
+                        fotoDe = fotoDe, onTirarFoto = onTirarFoto, onVerFoto = onVerFoto
+                    ) {
+                        OutlinedTextField(
+                            value = leituraFinal,
+                            onValueChange = onLeituraFinalChange,
+                            label = { Text("Leit. Final", style = MaterialTheme.typography.labelSmall) },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth().aoSairDoCampo(onLeituraFinalBlur),
+                            textStyle = MaterialTheme.typography.bodyMedium
+                        )
+                    }
                 }
             }
 
@@ -224,6 +265,30 @@ fun MedicaoInputRow(
                 }
             }
         }
+    }
+}
+
+/**
+ * Campo de leitura com o atalho de foto logo abaixo, alinhados na mesma coluna.
+ * O campo de escoamento não usa isto: é um volume digitado, não a leitura de um
+ * mostrador, então não há o que fotografar.
+ */
+@Composable
+private fun CampoComFoto(
+    modifier: Modifier,
+    campo: CampoLeitura,
+    fotoDe: (CampoLeitura) -> String,
+    onTirarFoto: (CampoLeitura) -> Unit,
+    onVerFoto: (CampoLeitura) -> Unit,
+    campoTexto: @Composable () -> Unit
+) {
+    Column(modifier = modifier) {
+        campoTexto()
+        BotaoFotoLeitura(
+            temFoto = fotoDe(campo).isNotBlank(),
+            onTirar = { onTirarFoto(campo) },
+            onVer = { onVerFoto(campo) }
+        )
     }
 }
 
