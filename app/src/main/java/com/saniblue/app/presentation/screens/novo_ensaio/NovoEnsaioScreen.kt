@@ -87,6 +87,7 @@ import com.saniblue.app.domain.model.MotivosNaoRealizado
 import com.saniblue.app.domain.model.NormaEnsaio
 import com.saniblue.app.domain.model.ResultadoFinal
 import com.saniblue.app.domain.model.TipoVazao
+import com.saniblue.app.presentation.components.AssinaturaCampo
 import com.saniblue.app.presentation.components.MedicaoInputRow
 import com.saniblue.app.presentation.components.SectionHeader
 import com.saniblue.app.presentation.theme.AprovadoGreen
@@ -1027,7 +1028,26 @@ private fun PassoResultado(uiState: NovoEnsaioUiState, viewModel: NovoEnsaioView
                     Text("Cliente recusou informar os dados")
                 }
             }
+
+            // Assinatura do cliente que acompanhou o ensaio
+            AssinaturaCampo(
+                titulo = "Assinatura do Cliente",
+                subtitulo = "Entregue o aparelho ao cliente para assinar na tela.",
+                path = uiState.assinaturaClientePath,
+                onAssinado = viewModel::salvarAssinaturaCliente,
+                onLimpar = viewModel::limparAssinaturaCliente
+            )
         }
+
+        // === ASSINATURA DO TÉCNICO ===
+        SectionHeader(title = "Assinatura do Técnico")
+        AssinaturaCampo(
+            titulo = uiState.tecnicoResponsavel.ifBlank { "Técnico Responsável" },
+            subtitulo = "Assinatura do técnico responsável pelo ensaio em campo.",
+            path = uiState.assinaturaTecnicoPath,
+            onAssinado = viewModel::salvarAssinaturaTecnico,
+            onLimpar = viewModel::limparAssinaturaTecnico
+        )
 
         uiState.error?.let { erro ->
             Text(

@@ -82,6 +82,10 @@ data class EnsaioEntity(
     @ColumnInfo("acompanhante_documento") val acompanhanteDocumento: String = "",
     @ColumnInfo("acompanhante_telefone") val acompanhanteTelefone: String = "",
 
+    // Assinaturas coletadas na tela (PNG no armazenamento do app) — "" se não assinou
+    @ColumnInfo("assinatura_cliente_path") val assinaturaClientePath: String = "",
+    @ColumnInfo("assinatura_tecnico_path") val assinaturaTecnicoPath: String = "",
+
     // Resultado calculado e armazenado
     @ColumnInfo("resultado_final") val resultadoFinal: String = "PENDENTE",
 

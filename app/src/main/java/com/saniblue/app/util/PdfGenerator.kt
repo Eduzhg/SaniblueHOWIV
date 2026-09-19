@@ -454,6 +454,7 @@ class PdfGenerator @Inject constructor(private val context: Context) {
             canvas.drawText("O cliente acompanhou o ensaio, mas recusou fornecer seus dados.",
                 ML + 2f, y + 12f, textPaint(Color.BLACK, 9f, bold = true))
             y += 22f
+            drawAssinaturaCliente(ensaio)
             return
         }
 
@@ -471,6 +472,51 @@ class PdfGenerator @Inject constructor(private val context: Context) {
         }
         canvas.drawLine(ML, y, PW - ML, y, strokePaint(Color.LTGRAY, 0.4f))
         y += 8f
+
+        drawAssinaturaCliente(ensaio)
+    }
+
+    /** Assinatura coletada na tela pelo cliente que acompanhou o ensaio. */
+    private fun drawAssinaturaCliente(ensaio: Ensaio) {
+        if (ensaio.assinaturaClientePath.isBlank()) return
+        if (!drawImagemAssinatura(ensaio.assinaturaClientePath)) return
+
+        val larguraLinha = 240f
+        canvas.drawLine(ML, y, ML + larguraLinha, y, strokePaint(Color.BLACK, 0.8f))
+        canvas.drawText(
+            trunc(ensaio.acompanhanteNome.ifBlank { "Cliente" }, 45),
+            ML, y + 12f, textPaint(Color.BLACK, 9f, bold = true)
+        )
+        canvas.drawText("Assinatura do Cliente (acompanhou o ensaio)",
+            ML, y + 23f, textPaint(Color.GRAY, 7.5f))
+        y += 30f
+    }
+
+    /**
+     * Desenha o PNG da assinatura logo acima da linha de assinatura, na escala do laudo.
+     * O PNG já vem recortado no traçado, então a proporção é a da própria assinatura.
+     *
+     * @param centralizado true para a assinatura do técnico (linha centralizada na página)
+     * @return false se o arquivo não pôde ser carregado (assinatura apagada do aparelho).
+     */
+    private fun drawImagemAssinatura(path: String, centralizado: Boolean = false): Boolean {
+        val bitmap = FotoEnsaioHelper.carregarBitmap(context, path) ?: return false
+        val maxW = 240f
+        val maxH = 60f
+        var imgW = maxW
+        var imgH = maxW * bitmap.height.toFloat() / bitmap.width.toFloat()
+        if (imgH > maxH) {
+            imgH = maxH
+            imgW = maxH * bitmap.width.toFloat() / bitmap.height.toFloat()
+        }
+        checkSpace(imgH + 46f)
+        y += 6f
+        val esquerda = if (centralizado) PW / 2f - imgW / 2f else ML
+        val destino = android.graphics.RectF(esquerda, y, esquerda + imgW, y + imgH)
+        canvas.drawBitmap(bitmap, null, destino, Paint().apply { isFilterBitmap = true })
+        y += imgH + 2f
+        bitmap.recycle()
+        return true
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -478,12 +524,18 @@ class PdfGenerator @Inject constructor(private val context: Context) {
     // ─────────────────────────────────────────────────────────────────
 
     private fun drawAssinatura(ensaio: Ensaio) {
-        // Espaço em branco para assinar + linha + identificação
-        checkSpace(70f)
-        y += 28f
-
         val cx   = PW / 2f
         val meia = 120f
+
+        // Com assinatura coletada na tela, ela vai acima da linha; sem ela, o laudo
+        // mantém o espaço em branco para o técnico assinar à caneta.
+        val assinou = ensaio.assinaturaTecnicoPath.isNotBlank() &&
+            drawImagemAssinatura(ensaio.assinaturaTecnicoPath, centralizado = true)
+        if (!assinou) {
+            checkSpace(70f)
+            y += 28f
+        }
+
         canvas.drawLine(cx - meia, y, cx + meia, y, strokePaint(Color.BLACK, 0.8f))
         canvas.drawText(ensaio.tecnicoResponsavel,
             cx, y + 13f, textPaint(Color.BLACK, 9f, bold = true, align = Paint.Align.CENTER))

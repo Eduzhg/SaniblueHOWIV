@@ -113,6 +113,8 @@ class EnsaioRepositoryImpl @Inject constructor(
         acompanhanteNome = acompanhanteNome,
         acompanhanteDocumento = acompanhanteDocumento,
         acompanhanteTelefone = acompanhanteTelefone,
+        assinaturaClientePath = assinaturaClientePath,
+        assinaturaTecnicoPath = assinaturaTecnicoPath,
         fotoPath = fotoPath,
         resultadoFinal = runCatching { ResultadoFinal.valueOf(resultadoFinal) }.getOrDefault(ResultadoFinal.PENDENTE),
         vazoes = vazoes,
@@ -153,6 +155,8 @@ class EnsaioRepositoryImpl @Inject constructor(
         acompanhanteNome = acompanhanteNome,
         acompanhanteDocumento = acompanhanteDocumento,
         acompanhanteTelefone = acompanhanteTelefone,
+        assinaturaClientePath = assinaturaClientePath,
+        assinaturaTecnicoPath = assinaturaTecnicoPath,
         fotoPath = fotoPath,
         resultadoFinal = resultadoFinal.name
     )

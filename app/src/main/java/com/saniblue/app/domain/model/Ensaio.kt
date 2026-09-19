@@ -44,6 +44,9 @@ data class Ensaio(
     val acompanhanteNome: String = "",
     val acompanhanteDocumento: String = "",
     val acompanhanteTelefone: String = "",
+    // Assinaturas coletadas na tela (caminho do PNG no armazenamento do app) — "" se não assinou
+    val assinaturaClientePath: String = "",
+    val assinaturaTecnicoPath: String = "",
     // Foto do local (apenas ensaios não realizados) — URI content:// ou caminho absoluto
     val fotoPath: String = "",
     val vazoes: List<VazaoEnsaio> = emptyList(),

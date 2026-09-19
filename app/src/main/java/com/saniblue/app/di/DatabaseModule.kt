@@ -5,6 +5,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.saniblue.app.data.local.database.DatabasePrePopulate
+import com.saniblue.app.data.local.database.MIGRATIONS
 import com.saniblue.app.data.local.database.SaniblueDatabase
 import dagger.Module
 import dagger.Provides
@@ -35,6 +36,9 @@ object DatabaseModule {
                     prePopulateSeVazio(database)
                 }
             })
+            // Migrações declaradas preservam os ensaios do tablet ao atualizar o APK;
+            // o fallback destrutivo só entra para versões sem migração conhecida.
+            .addMigrations(*MIGRATIONS)
             .fallbackToDestructiveMigration()
             .build()
     }

@@ -48,6 +48,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.saniblue.app.domain.model.Ensaio
 import com.saniblue.app.domain.model.NormaEnsaio
 import com.saniblue.app.domain.model.VazaoEnsaio
+import com.saniblue.app.presentation.components.AssinaturaPreview
 import com.saniblue.app.presentation.components.ErroChip
 import coil.compose.AsyncImage
 import com.saniblue.app.presentation.components.InfoRow
@@ -199,6 +200,48 @@ fun DetalhesEnsaioScreen(
                                 InfoRow("Leitura Final (reprovado)", ensaio.leituraFinalReprovado.ifBlank { "-" })
                                 InfoRow("Nº Série (novo)", ensaio.numeroSerieNovo.ifBlank { "-" })
                                 InfoRow("Leitura Inicial (novo)", ensaio.leituraInicialNovo.ifBlank { "-" })
+                            }
+                        }
+                    }
+
+                    // Acompanhamento do cliente e assinaturas
+                    SectionHeader("Acompanhamento e Assinaturas")
+                    Card {
+                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            InfoRow(
+                                "Cliente acompanhou",
+                                if (ensaio.clienteAcompanhou) "Sim" else "Não"
+                            )
+                            if (ensaio.clienteAcompanhou) {
+                                if (ensaio.clienteRecusouDados) {
+                                    InfoRow("Dados do cliente", "Cliente recusou informar")
+                                } else {
+                                    InfoRow("Nome", ensaio.acompanhanteNome.ifBlank { "-" })
+                                    InfoRow("Documento", ensaio.acompanhanteDocumento.ifBlank { "-" })
+                                    InfoRow("Telefone", ensaio.acompanhanteTelefone.ifBlank { "-" })
+                                }
+                                if (ensaio.assinaturaClientePath.isNotBlank()) {
+                                    Text(
+                                        "Assinatura do cliente",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    AssinaturaPreview(
+                                        ensaio.assinaturaClientePath,
+                                        Modifier.fillMaxWidth().height(110.dp)
+                                    )
+                                }
+                            }
+                            if (ensaio.assinaturaTecnicoPath.isNotBlank()) {
+                                Text(
+                                    "Assinatura do técnico",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                AssinaturaPreview(
+                                    ensaio.assinaturaTecnicoPath,
+                                    Modifier.fillMaxWidth().height(110.dp)
+                                )
                             }
                         }
                     }

@@ -1,6 +1,7 @@
 package com.saniblue.app.presentation.screens.novo_ensaio
 
 import android.content.Context
+import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.saniblue.app.domain.model.ClasseHidrometro
@@ -24,6 +25,7 @@ import com.saniblue.app.util.isLetraCapacidadeConhecida
 import com.saniblue.app.util.isSerialHidrometroValido
 import com.saniblue.app.util.normaDoSerial
 import com.saniblue.app.util.toDoubleLocale
+import com.saniblue.app.util.AssinaturaHelper
 import com.saniblue.app.util.FotoEnsaioHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -172,6 +174,10 @@ data class NovoEnsaioUiState(
     val acompanhanteDocumento: String = "",
     val acompanhanteTelefone: String = "",
 
+    // Assinaturas coletadas na tela (caminho do PNG gravado) — "" enquanto não assinam
+    val assinaturaClientePath: String = "",
+    val assinaturaTecnicoPath: String = "",
+
     // Controle de UI
     val isLoading: Boolean = false,
     val isSaved: Boolean = false,
@@ -317,6 +323,8 @@ class NovoEnsaioViewModel @Inject constructor(
                 leituraFinalReprovado = ensaio.leituraFinalReprovado,
                 numeroSerieNovo = ensaio.numeroSerieNovo,
                 leituraInicialNovo = ensaio.leituraInicialNovo,
+                assinaturaClientePath = ensaio.assinaturaClientePath,
+                assinaturaTecnicoPath = ensaio.assinaturaTecnicoPath,
                 clienteAcompanhou = ensaio.clienteAcompanhou,
                 clienteRecusouDados = ensaio.clienteRecusouDados,
                 acompanhanteNome = ensaio.acompanhanteNome,
@@ -436,13 +444,17 @@ class NovoEnsaioViewModel @Inject constructor(
     fun updateNumeroSerieNovo(v: String) = update { copy(numeroSerieNovo = v.filtrarSerialHidrometro()) }
 
     // Acompanhamento do ensaio pelo cliente
-    fun setClienteAcompanhou(acompanhou: Boolean) = update {
-        // Desligar limpa também a recusa e os dados digitados
-        if (acompanhou) copy(clienteAcompanhou = true)
-        else copy(
-            clienteAcompanhou = false, clienteRecusouDados = false,
-            acompanhanteNome = "", acompanhanteDocumento = "", acompanhanteTelefone = ""
-        )
+    fun setClienteAcompanhou(acompanhou: Boolean) {
+        // Desligar limpa também a recusa, os dados digitados e a assinatura do cliente
+        if (!acompanhou) apagarArquivoAssinatura(_uiState.value.assinaturaClientePath)
+        update {
+            if (acompanhou) copy(clienteAcompanhou = true)
+            else copy(
+                clienteAcompanhou = false, clienteRecusouDados = false,
+                acompanhanteNome = "", acompanhanteDocumento = "", acompanhanteTelefone = "",
+                assinaturaClientePath = ""
+            )
+        }
     }
     fun setClienteRecusouDados(recusou: Boolean) = update {
         // Recusa registra a negativa e limpa os dados
@@ -454,7 +466,62 @@ class NovoEnsaioViewModel @Inject constructor(
     fun updateAcompanhanteNome(v: String) = update { copy(acompanhanteNome = v) }
     fun updateAcompanhanteDocumento(v: String) = update { copy(acompanhanteDocumento = v) }
     fun updateAcompanhanteTelefone(v: String) = update { copy(acompanhanteTelefone = v.filter { c -> c.isDigit() || c in " ()-+" }) }
+
     fun updateLeituraInicialNovo(v: String) = update { copy(leituraInicialNovo = v.filtrarDecimal()) }
+
+    // Assinaturas coletadas na tela — o bitmap vira um PNG no armazenamento do app e
+    // o estado guarda só o caminho (o rascunho contínuo já persiste esse campo)
+    fun salvarAssinaturaCliente(bitmap: Bitmap) =
+        salvarAssinatura(bitmap, AssinaturaHelper.Tipo.CLIENTE)
+
+    fun salvarAssinaturaTecnico(bitmap: Bitmap) =
+        salvarAssinatura(bitmap, AssinaturaHelper.Tipo.TECNICO)
+
+    fun limparAssinaturaCliente() {
+        apagarArquivoAssinatura(_uiState.value.assinaturaClientePath)
+        update { copy(assinaturaClientePath = "") }
+    }
+
+    fun limparAssinaturaTecnico() {
+        apagarArquivoAssinatura(_uiState.value.assinaturaTecnicoPath)
+        update { copy(assinaturaTecnicoPath = "") }
+    }
+
+    private fun salvarAssinatura(bitmap: Bitmap, tipo: AssinaturaHelper.Tipo) {
+        val state = _uiState.value
+        val anterior = when (tipo) {
+            AssinaturaHelper.Tipo.CLIENTE -> state.assinaturaClientePath
+            AssinaturaHelper.Tipo.TECNICO -> state.assinaturaTecnicoPath
+        }
+        viewModelScope.launch {
+            val path = withContext(Dispatchers.IO) {
+                AssinaturaHelper.salvarAssinatura(
+                    appContext, bitmap, tipo,
+                    state.numeroHidrometro,
+                    state.dataEnsaio.ifBlank { "sem_data" }
+                )
+            }
+            if (path.isBlank()) {
+                update { copy(mensagemAviso = "Não foi possível gravar a assinatura. Tente novamente.") }
+                return@launch
+            }
+            update {
+                when (tipo) {
+                    AssinaturaHelper.Tipo.CLIENTE -> copy(assinaturaClientePath = path)
+                    AssinaturaHelper.Tipo.TECNICO -> copy(assinaturaTecnicoPath = path)
+                }
+            }
+            // Só apaga a versão antiga depois que a nova está gravada
+            if (anterior.isNotBlank() && anterior != path) {
+                withContext(Dispatchers.IO) { AssinaturaHelper.apagarAssinatura(anterior) }
+            }
+        }
+    }
+
+    private fun apagarArquivoAssinatura(path: String) {
+        if (path.isBlank()) return
+        viewModelScope.launch { withContext(Dispatchers.IO) { AssinaturaHelper.apagarAssinatura(path) } }
+    }
 
     // Alerta de leitura suspeita
     fun confirmarAlerta() {
@@ -945,6 +1012,8 @@ class NovoEnsaioViewModel @Inject constructor(
         acompanhanteNome = state.acompanhanteNome,
         acompanhanteDocumento = state.acompanhanteDocumento,
         acompanhanteTelefone = state.acompanhanteTelefone,
+        assinaturaClientePath = state.assinaturaClientePath,
+        assinaturaTecnicoPath = state.assinaturaTecnicoPath,
         vazoes = if (state.realizado) buildVazoes(state) else emptyList(),
         resultadoFinal = state.resultadoFinal
     )
